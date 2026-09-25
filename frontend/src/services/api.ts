@@ -2,7 +2,7 @@ import {
   User, Facility, FacilityReport, BreakSession, 
   SupportResource, PartnerOffer, RecommendationResult, 
   RoutePlanResponse, IncomeImpactEstimate, AdminOverview,
-  UserRegisterData
+  UserRegisterData, RestPointAIResponse, RakshitArthaAIResponse
 } from '../types';
 
 const API_BASE = (typeof window !== 'undefined' && window.location.port === '5173') 
@@ -210,4 +210,28 @@ export const supportApi = {
 
 export const adminApi = {
   getOverview: () => request<AdminOverview>('/api/admin/overview')
+};
+
+export const aiApi = {
+  recommendRestpoints: (data: {
+    query: string;
+    lat: number;
+    lng: number;
+    max_distance_km?: number;
+  }) => request<RestPointAIResponse>('/api/ai/restpoint-recommend', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  evaluateDisruption: (data: {
+    lat: number;
+    lng: number;
+    daily_income: number;
+    working_hours: number;
+    downtime_hours: number;
+    affected_days: number;
+    client_weather?: any;
+  }) => request<RakshitArthaAIResponse>('/api/ai/rakshitartha-disruption', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
 };

@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetchWeather, WeatherData } from '../services/weatherApi';
-import { authApi } from '../services/api';
-import { ProtectionTier, DisruptionScenario, ParametricSimulationStage } from '../types';
+import { authApi, aiApi } from '../services/api';
+import { ProtectionTier, DisruptionScenario, ParametricSimulationStage, RakshitArthaAIResponse } from '../types';
 
 interface RakshitArthaPageProps {
   onNavigate: (tab: string) => void;
@@ -41,6 +41,39 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [simTriggerType, setSimTriggerType] = useState<'HEAVY_RAIN' | 'EXTREME_HEAT' | 'HIGH_WIND'>('HEAVY_RAIN');
 
+  // --- Groq AI Disruption Assistant State ---
+  const [aiEvaluation, setAiEvaluation] = useState<RakshitArthaAIResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const runAiDisruptionAnalysis = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await aiApi.evaluateDisruption({
+        lat: 11.0267,
+        lng: 77.0118,
+        daily_income: dailyIncome,
+        working_hours: workingHours,
+        downtime_hours: downtimeHours,
+        affected_days: affectedDays,
+        client_weather: weather ? {
+          temperature: weather.temperature,
+          wind_speed: weather.windSpeed,
+          precipitation: weather.isRaining ? 12 : 0,
+          precipitation_prob: weather.precipitationProb,
+          condition_text: weather.conditionText,
+          last_updated: lastRefreshed
+        } : undefined
+      });
+      setAiEvaluation(res);
+    } catch (err: any) {
+      setAiError(err.message || 'AI disruption analysis temporarily unavailable');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Load weather data on mount
   const loadWeatherData = async () => {
     setWeatherLoading(true);
@@ -71,6 +104,7 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
 
   useEffect(() => {
     loadWeatherData();
+    runAiDisruptionAnalysis();
   }, []);
 
   // Sync hourly rate estimate from authenticated user profile if available
@@ -541,6 +575,198 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
         </div>
       </div>
 
+      {/* SECTION B.2: AI Disruption Assistant (Groq LLM + Real Telemetry + Real Support Facilities) */}
+      <div className="card" style={{
+        padding: 24,
+        background: 'linear-gradient(135deg, #F8FAFC 0%, #F5F3FF 100%)',
+        border: '1.5px solid #DDD6FE'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: '#7C3AED',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#4C1D95' }}>
+                  AI Disruption Assistant
+                </h2>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, backgroundColor: '#EDE9FE', color: '#6D28D9' }}>
+                  ⚡ Groq LLM + Factual Telemetry
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: '#6D28D9', margin: '2px 0 0 0' }}>
+                Real meteorological telemetry + deterministic disruption rules + nearby Restora support facilities
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={runAiDisruptionAnalysis}
+            disabled={aiLoading}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: '#DDD6FE', color: '#6D28D9' }}
+          >
+            <RefreshCw size={13} className={aiLoading ? 'spin' : ''} />
+            <span>{aiLoading ? 'Analyzing...' : 'Refresh AI Analysis'}</span>
+          </button>
+        </div>
+
+        {/* Real vs Demo Separation Badges Banner */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 16,
+          padding: '8px 12px',
+          backgroundColor: '#FFFFFF',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid #E9D5FF',
+          fontSize: 12
+        }}>
+          <span style={{ fontWeight: 600, color: '#4C1D95' }}>Data Provenance:</span>
+          <span style={{ color: '#047857', fontWeight: 600 }}>✓ Real Weather API</span>
+          <span style={{ color: 'var(--border)' }}>•</span>
+          <span style={{ color: '#047857', fontWeight: 600 }}>✓ Deterministic Calculations</span>
+          <span style={{ color: 'var(--border)' }}>•</span>
+          <span style={{ color: '#047857', fontWeight: 600 }}>✓ Real Restora Facilities</span>
+          <span style={{ color: 'var(--border)' }}>•</span>
+          <span style={{ color: '#B45309', fontWeight: 600 }}>⚠️ Demo Coverage & Payout Values</span>
+        </div>
+
+        {/* Content */}
+        {aiError && (
+          <div style={{ padding: 12, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', color: '#B91C1C', fontSize: 13, marginBottom: 12 }}>
+            {aiError}
+          </div>
+        )}
+
+        {aiEvaluation && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* AI Grounded Explanation */}
+            <div style={{
+              padding: '16px 18px',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #DDD6FE',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 13,
+              color: '#1E293B',
+              lineHeight: 1.6
+            }}>
+              <div style={{ fontWeight: 700, color: '#6D28D9', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={15} color="#7C3AED" /> AI Environmental Assessment & Rider Advisory:
+              </div>
+              <p style={{ margin: 0, fontStyle: 'italic' }}>
+                "{aiEvaluation.explanation}"
+              </p>
+            </div>
+
+            {/* Structured Telemetry & Rule Badges */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              <div style={{ padding: '12px 14px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Weather Condition [REAL]
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
+                  {aiEvaluation.weather.condition_text} ({aiEvaluation.weather.temperature}°C)
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Rain: {aiEvaluation.weather.precipitation_prob}% • Wind: {aiEvaluation.weather.wind_speed} km/h
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 14px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Disruption Rule [DETERMINISTIC]
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: aiEvaluation.disruption_rule.threshold_met ? '#B45309' : '#059669', marginTop: 2 }}>
+                  {aiEvaluation.disruption_rule.condition_type.replace(/_/g, ' ')}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  {aiEvaluation.disruption_rule.status_label}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 14px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Estimated Downtime Impact [CALCULATED]
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#B91C1C', marginTop: 2 }}>
+                  ₹{aiEvaluation.income_calculation.total_estimated_impact}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Illustrative estimate based on user input
+                </div>
+              </div>
+            </div>
+
+            {/* Nearby Worker Support Facilities from Real Restora DB */}
+            {aiEvaluation.nearby_support_facilities.length > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#4C1D95' }}>
+                    🛡️ Nearby Worker Support Facilities [REAL RESTORA DATA]
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Covered shade, drinking water, and safe rest during adverse weather
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+                  {aiEvaluation.nearby_support_facilities.map((fac) => (
+                    <div
+                      key={fac.id}
+                      style={{
+                        padding: '12px 14px',
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid #DDD6FE',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 10
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1E293B' }}>
+                          {fac.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          📍 {fac.zone || fac.city} • <strong style={{ color: 'var(--primary)' }}>{fac.distance_meters ? `${fac.distance_meters}m away` : 'Nearby'}</strong>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                          {fac.has_shade && <span>🌳 Shade</span>}
+                          {fac.has_water && <span>💧 Water</span>}
+                          {fac.has_charging && <span>🔋 Charging</span>}
+                          {fac.has_rest && <span>🛋️ Rest</span>}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => onNavigate('explore')}
+                        className="btn btn-outline btn-sm"
+                        style={{ fontSize: 11, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                      >
+                        Locate →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* SECTION C: Estimated Income Impact Calculator */}
       <div className="card" style={{ padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -806,8 +1032,8 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
             </p>
           </div>
 
-          <span className="badge badge-outline" style={{ fontSize: 11 }}>
-            Simulation & Educational Only
+          <span className="badge badge-warning" style={{ fontSize: 11, fontWeight: 700 }}>
+            DEMO / ILLUSTRATIVE MODEL
           </span>
         </div>
 
@@ -855,11 +1081,14 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
                     {tier.tagline}
                   </p>
 
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 12 }}>
                     <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>
                       ₹{tier.weeklyMicroContribution}
                     </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>/ week (micro-contribution)</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>/ week</span>
+                    <span className="badge badge-warning" style={{ fontSize: 9, padding: '1px 5px' }}>
+                      DEMO
+                    </span>
                   </div>
 
                   <div style={{
@@ -870,6 +1099,9 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
                     fontSize: 12,
                     marginBottom: 12
                   }}>
+                    <span style={{ fontSize: 10, color: '#B45309', fontWeight: 700, display: 'block', marginBottom: 2 }}>
+                      DEMO / ILLUSTRATIVE
+                    </span>
                     Simulated Disruption Cap: <strong>Up to ₹{tier.coverageCap}</strong>
                   </div>
 
@@ -911,6 +1143,26 @@ export const RakshitArthaPage: React.FC<RakshitArthaPageProps> = ({ onNavigate }
               <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
                 Experience how smart oracle contracts verify weather disruptions and calculate downtime without manual forms.
               </p>
+            </div>
+
+            {/* Prominent Demo Simulation Banner */}
+            <div style={{
+              width: '100%',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              fontSize: 12,
+              color: '#FCD34D',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
+              <span>
+                <strong>DEMO / ILLUSTRATIVE SIMULATION:</strong> Models automated oracle logic for educational purposes. No insurance underwritten or real payments made.
+              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -69,7 +69,7 @@ export function AppContent() {
       case 'route':
         return <RoutePage />;
       case 'breaks':
-        return <BreaksPage />;
+        return <BreaksPage onNavigate={handleTabChange} />;
       case 'rakshitartha':
         return <RakshitArthaPage onNavigate={handleTabChange} />;
       case 'support':

@@ -13,6 +13,7 @@ import { InteractiveMap } from '../components/InteractiveMap';
 import { FacilityCard } from '../components/FacilityCard';
 import { FacilityDetailModal } from '../components/FacilityDetailModal';
 import { ReportModal } from '../components/ReportModal';
+import { RestPointAIAssistantModal } from '../components/RestPointAIAssistantModal';
 
 export const ExplorePage: React.FC = () => {
   const { isAuthenticated, openAuthModal } = useAuth();
@@ -32,6 +33,7 @@ export const ExplorePage: React.FC = () => {
   
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [reportFacility, setReportFacility] = useState<Facility | null>(null);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   
   const { 
     location, 
@@ -97,8 +99,18 @@ export const ExplorePage: React.FC = () => {
       setSearchRadiusKm(res.searchRadiusKm);
       setSearchMessage(res.message);
       
-      if (res.facilities.length > 0 && !selectedFacility) {
-        setSelectedFacility(res.facilities[0]);
+      // Explicit deep-link support: only select if URL query explicitly requested a facility (e.g. ?facility=123 or #explore?facility=123)
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+        const hashParams = new URLSearchParams(hashQuery);
+        const requestedId = searchParams.get('facility') || hashParams.get('facility');
+        if (requestedId) {
+          const match = res.facilities.find(f => f.id === Number(requestedId));
+          if (match && (!selectedFacility || selectedFacility.id !== match.id)) {
+            setSelectedFacility(match);
+          }
+        }
       }
     } catch (err: any) {
       console.error('Failed to load facilities', err);
@@ -373,8 +385,31 @@ export const ExplorePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Chips */}
-        <div style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 2 }} className="hide-scrollbar">
+        {/* Filter Chips & AI Assistant Entry */}
+        <div style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 2, alignItems: 'center' }} className="hide-scrollbar">
+          {/* Ask RESTORA AI Button */}
+          <button
+            onClick={() => setShowAIAssistant(true)}
+            style={{
+              whiteSpace: 'nowrap',
+              padding: '5px 13px',
+              borderRadius: 18,
+              fontSize: 12,
+              fontWeight: 700,
+              backgroundColor: '#7C3AED',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+              transition: 'all 0.15s',
+              flexShrink: 0
+            }}
+          >
+            <Sparkles size={14} /> Ask RESTORA AI
+          </button>
           {[
             { id: 'WASHROOM', label: '🚻 Washroom' },
             { id: 'WATER', label: '💧 Water' },
@@ -761,6 +796,14 @@ export const ExplorePage: React.FC = () => {
         isOpen={!!reportFacility}
         onClose={() => setReportFacility(null)}
         onSuccess={loadFacilities}
+      />
+
+      <RestPointAIAssistantModal
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        userLat={effectiveLat}
+        userLng={effectiveLng}
+        onSelectFacility={(fac) => setSelectedFacility(fac)}
       />
     </div>
   );
