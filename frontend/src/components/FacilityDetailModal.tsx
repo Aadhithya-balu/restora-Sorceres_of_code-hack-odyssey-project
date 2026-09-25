@@ -519,7 +519,7 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
             {verifying ? 'Verifying...' : 'Verify Now'}
           </button>
 
-          {onBookmarkToggle && (
+          {onStartBreakHere && (
             <button
               onClick={() => {
                 if (!isAuthenticated) {
@@ -528,6 +528,22 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
                 }
                 onStartBreakHere(facility);
                 onClose();
+              }}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              Take Break Here
+            </button>
+          )}
+
+          {onBookmarkToggle && (
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  openAuthModal('login');
+                  return;
+                }
+                onBookmarkToggle(facility.id);
               }}
               className="btn btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}

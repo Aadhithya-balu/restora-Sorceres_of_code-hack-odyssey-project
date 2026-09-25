@@ -99,6 +99,11 @@ export const facilityApi = {
     request<{ success: boolean; message: string }>('/api/facilities/verify', {
       method: 'POST',
       body: JSON.stringify(data)
+    }),
+  seedDemoFacilities: (lat: number, lng: number, city = 'Current Location') => 
+    request<{ success: boolean; message: string; count: number }>('/api/facilities/seed-demo', {
+      method: 'POST',
+      body: JSON.stringify({ lat, lng, city })
     })
 };
 
