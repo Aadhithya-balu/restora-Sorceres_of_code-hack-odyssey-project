@@ -15,8 +15,11 @@ if DATABASE_URL.startswith("postgres://"):
 def create_configured_engine(url: str):
     if url.startswith("sqlite"):
         return create_engine(url, connect_args={"check_same_thread": False})
-    else:
-        return create_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=20)
+
+    if ".pooler.supabase.com" in url and ":6543" in url:
+        return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=0)
+
+    return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5)
 
 engine = create_configured_engine(DATABASE_URL)
 
