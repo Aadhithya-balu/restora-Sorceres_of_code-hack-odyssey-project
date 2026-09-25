@@ -326,3 +326,24 @@ p {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Explore Map Layout Utilities */
+.explore-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  background-color: #E2E8F0;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .explore-map-wrapper {
+    height: 360px;
+  }
+}
+
+.facility-card-selected {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.25) !important;
+  background-color: rgba(240, 253, 250, 0.75) !important;
+}

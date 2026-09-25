@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Search, Filter, MapPin, CheckCircle, Sliders, 
   RotateCcw, RefreshCw, Bookmark, PlusCircle, AlertTriangle,
-  Play, Pause, Crosshair, ArrowRight, ShieldAlert, Sparkles, X, Info
+  Play, Pause, Crosshair, ArrowRight, ShieldAlert, Sparkles, X, Info,
+  LayoutGrid, List
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../hooks/useLocation';
@@ -32,8 +33,10 @@ export const ExplorePage: React.FC = () => {
   const [searchMessage, setSearchMessage] = useState<string>('');
   
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
+  const [detailFacility, setDetailFacility] = useState<Facility | null>(null);
   const [reportFacility, setReportFacility] = useState<Facility | null>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [cardViewMode, setCardViewMode] = useState<'grid' | 'row'>('grid');
   
   const { 
     location, 
@@ -109,6 +112,7 @@ export const ExplorePage: React.FC = () => {
           const match = res.facilities.find(f => f.id === Number(requestedId));
           if (match && (!selectedFacility || selectedFacility.id !== match.id)) {
             setSelectedFacility(match);
+            setDetailFacility(match);
           }
         }
       }
@@ -140,6 +144,19 @@ export const ExplorePage: React.FC = () => {
     loadFacilities();
   }, [loadFacilities]);
 
+  const handleSelectFacility = (fac: Facility) => {
+    if (selectedFacility?.id === fac.id) {
+      // Second click opens full details
+      setDetailFacility(fac);
+      return;
+    }
+    setSelectedFacility(fac);
+    const cardEl = document.getElementById(`facility-card-${fac.id}`);
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  };
+
   const handleSelectLocality = (loc: LocalityResult) => {
     setManualLocation(loc.lat, loc.lng, loc.shortName);
     setSearchQuery(loc.shortName);
@@ -149,6 +166,8 @@ export const ExplorePage: React.FC = () => {
   const handleResetFilters = () => {
     setSelectedCategories([]);
     setSearchQuery('');
+    setSelectedFacility(null);
+    setDetailFacility(null);
     clearManualLocation();
   };
 
@@ -242,7 +261,7 @@ export const ExplorePage: React.FC = () => {
   const hasNoDedicatedRestHub = isDedicatedRestHubFilter && facilities.length === 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden', backgroundColor: 'var(--bg-main)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 64px)', backgroundColor: 'var(--bg-main)' }}>
       
       {/* Top Header: Search & Live Tracking Bar */}
       <div style={{ padding: '12px 16px', backgroundColor: 'var(--surface)', zIndex: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -529,9 +548,8 @@ export const ExplorePage: React.FC = () => {
         )}
       </div>
 
-      {/* Map Area */}
-      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        
+      {/* Map Area Container (clean, middle section, no overlay cards) */}
+      <div className="explore-map-wrapper">
         {/* Search Radius & Count Overlay */}
         <div style={{
           position: 'absolute',
@@ -605,44 +623,105 @@ export const ExplorePage: React.FC = () => {
         )}
 
         {/* Map View */}
-        <div style={{ flex: 1, width: '100%', height: '100%' }}>
-          <InteractiveMap
-            facilities={facilities}
-            selectedFacility={selectedFacility}
-            onSelectFacility={(fac) => setSelectedFacility(fac)}
-            userLat={location.lat}
-            userLng={location.lng}
-            accuracy={location.accuracy}
-            searchRadiusKm={searchRadiusKm}
-            height="100%"
-            isManualSearch={location.isManualSearch}
-            manualLocationName={location.manualLocationName}
-            onRecenter={clearManualLocation}
-          />
+        <InteractiveMap
+          facilities={facilities}
+          selectedFacility={selectedFacility}
+          onSelectFacility={handleSelectFacility}
+          onOpenDetails={setDetailFacility}
+          userLat={location.lat}
+          userLng={location.lng}
+          accuracy={location.accuracy}
+          searchRadiusKm={searchRadiusKm}
+          height="100%"
+          isManualSearch={location.isManualSearch}
+          manualLocationName={location.manualLocationName}
+          onRecenter={clearManualLocation}
+        />
+      </div>
+
+      {/* Dedicated "Nearby Facilities" / "Rest Points Near You" Section Below Map */}
+      <section id="nearby-facilities" style={{
+        padding: '24px 20px 48px',
+        maxWidth: 1360,
+        margin: '0 auto',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {/* Section Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 18
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Nearby Rest Facilities
+              </h2>
+              <span className="badge badge-verified" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 12 }}>
+                {facilities.length} Found
+              </span>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+              Verified resting points within <strong>{searchRadiusKm} km</strong> of your active coordinates. Click any card to highlight on map.
+            </p>
+          </div>
+
+          {/* View Mode Switcher */}
+          {facilities.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: 'var(--surface)',
+              padding: 4,
+              borderRadius: 10,
+              border: '1px solid var(--border)'
+            }}>
+              <button
+                type="button"
+                onClick={() => setCardViewMode('grid')}
+                className={`btn btn-sm ${cardViewMode === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 12px' }}
+                title="Display as responsive grid"
+              >
+                <LayoutGrid size={14} />
+                <span>Grid View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardViewMode('row')}
+                className={`btn btn-sm ${cardViewMode === 'row' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 12px' }}
+                title="Display as scrollable row"
+              >
+                <List size={14} />
+                <span>Scrollable Row</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Fallback Experience When No Dedicated Rest Hub Exists (Issue #5 § 10) */}
         {!loading && hasNoDedicatedRestHub && (
           <div style={{
-            position: 'absolute',
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000,
             backgroundColor: 'var(--surface)',
-            padding: '20px 24px',
+            padding: '24px 28px',
             borderRadius: 16,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.16)',
+            boxShadow: 'var(--shadow-sm)',
             textAlign: 'center',
-            width: '90%',
-            maxWidth: 360,
+            maxWidth: 480,
+            margin: '0 auto 24px',
             border: '1px solid var(--border)'
           }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⛱️</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>⛱️</div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px' }}>
               No dedicated rest hub nearby
             </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.4 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.4 }}>
               No specialized gig worker oasis was found within {searchRadiusKm} km. You can still discover shaded spots, water points, or washrooms.
             </p>
 
@@ -650,10 +729,10 @@ export const ExplorePage: React.FC = () => {
               backgroundColor: '#EFF6FF',
               border: '1px solid #BFDBFE',
               borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 11,
+              padding: '10px 14px',
+              fontSize: 12,
               color: '#1E40AF',
-              marginBottom: 14,
+              marginBottom: 16,
               textAlign: 'left'
             }}>
               ℹ️ <strong>Rest Suitability Guide:</strong> Tree shade and petrol pump bays are suitable for a short 10-minute hydration pause. Always confirm local access rules.
@@ -672,38 +751,33 @@ export const ExplorePage: React.FC = () => {
         {/* Complete Empty State if 0 facilities of any kind */}
         {!loading && facilities.length === 0 && !hasNoDedicatedRestHub && (
           <div style={{
-            position: 'absolute',
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000,
             backgroundColor: 'var(--surface)',
-            padding: '20px 24px',
+            padding: '32px 24px',
             borderRadius: 16,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            boxShadow: 'var(--shadow-sm)',
             textAlign: 'center',
-            maxWidth: 360,
-            width: '90%',
+            maxWidth: 420,
+            margin: '20px auto 40px',
             border: '1px solid var(--border)'
           }}>
             <div style={{
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               borderRadius: '50%',
               backgroundColor: '#FEF3C7',
               color: '#D97706',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 12px'
+              margin: '0 auto 14px'
             }}>
-              <MapPin size={26} />
+              <MapPin size={28} />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>No Rest Hubs Near Here</h3>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>No Rest Hubs Near Here</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.5 }}>
               No rest points found within {searchRadiusKm} km of coordinates ({effectiveLat.toFixed(3)}, {effectiveLng.toFixed(3)}).
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
                 type="button"
                 onClick={handleSeedDemoNearMe}
@@ -734,57 +808,64 @@ export const ExplorePage: React.FC = () => {
           </div>
         )}
 
-        {/* Horizontal Scrollable Facility Cards at Bottom */}
+        {/* Facility Cards Grid / Scrollable Row */}
         {facilities.length > 0 && (
-          <div style={{
-            position: 'absolute',
-            bottom: 20,
-            left: 0,
-            width: '100%',
-            zIndex: 1000,
-            overflowX: 'auto',
-            display: 'flex',
-            gap: 14,
-            padding: '0 16px',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }} className="hide-scrollbar">
-            {facilities.map((facility) => (
-              <div 
-                key={facility.id} 
-                style={{ 
-                  minWidth: 290, 
-                  maxWidth: 310,
-                  flexShrink: 0,
-                  opacity: selectedFacility?.id === facility.id ? 1 : 0.9,
-                  transform: selectedFacility?.id === facility.id ? 'scale(1.02)' : 'scale(0.98)',
-                  transition: 'all 0.2s ease-out'
-                }}
-                onClick={() => setSelectedFacility(facility)}
-              >
-                <FacilityCard
-                  facility={facility}
-                  onSelect={(fac) => setSelectedFacility(fac)}
-                  onBookmarkToggle={handleBookmarkToggle}
-                  onReportClick={(fac) => setReportFacility(fac)}
-                  userLat={location.lat}
-                  userLng={location.lng}
-                />
-              </div>
-            ))}
+          <div
+            className={cardViewMode === 'grid' ? 'explore-facilities-grid' : 'explore-facilities-row hide-scrollbar'}
+            style={cardViewMode === 'grid' ? {
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+              gap: 16
+            } : {
+              display: 'flex',
+              overflowX: 'auto',
+              gap: 16,
+              paddingBottom: 16,
+              scrollSnapType: 'x mandatory'
+            }}
+          >
+            {facilities.map((facility) => {
+              const isSelected = selectedFacility?.id === facility.id;
+              return (
+                <div
+                  key={facility.id}
+                  id={`facility-card-${facility.id}`}
+                  style={cardViewMode === 'row' ? {
+                    minWidth: 320,
+                    maxWidth: 360,
+                    flexShrink: 0,
+                    scrollSnapAlign: 'start'
+                  } : {}}
+                >
+                  <FacilityCard
+                    facility={facility}
+                    isSelected={isSelected}
+                    onSelect={handleSelectFacility}
+                    onOpenDetails={setDetailFacility}
+                    onBookmarkToggle={handleBookmarkToggle}
+                    onReportClick={(fac) => setReportFacility(fac)}
+                    userLat={location.lat}
+                    userLng={location.lng}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Modals */}
       <FacilityDetailModal
-        facility={selectedFacility}
+        facility={detailFacility}
         allFacilities={facilities}
-        isOpen={!!selectedFacility}
-        onClose={() => setSelectedFacility(null)}
-        onSelectFacility={(fac) => setSelectedFacility(fac)}
+        isOpen={!!detailFacility}
+        onClose={() => setDetailFacility(null)}
+        onSelectFacility={(fac) => {
+          handleSelectFacility(fac);
+          setDetailFacility(fac);
+        }}
         onOpenReport={(fac) => {
-          setSelectedFacility(null);
+          setDetailFacility(null);
           setReportFacility(fac);
         }}
         onBookmarkToggle={handleBookmarkToggle}
@@ -803,7 +884,7 @@ export const ExplorePage: React.FC = () => {
         onClose={() => setShowAIAssistant(false)}
         userLat={effectiveLat}
         userLng={effectiveLng}
-        onSelectFacility={(fac) => setSelectedFacility(fac)}
+        onSelectFacility={(fac) => handleSelectFacility(fac)}
       />
     </div>
   );

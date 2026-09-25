@@ -208,7 +208,7 @@ const MapFloatingControls: React.FC<{
     <div style={{
       position: 'absolute',
       right: 16,
-      bottom: 100,
+      bottom: 28,
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
@@ -290,6 +290,7 @@ interface InteractiveMapProps {
   facilities: Facility[];
   selectedFacility: Facility | null;
   onSelectFacility: (facility: Facility) => void;
+  onOpenDetails?: (facility: Facility) => void;
   userLat?: number | null;
   userLng?: number | null;
   accuracy?: number | null;
@@ -304,6 +305,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   facilities,
   selectedFacility,
   onSelectFacility,
+  onOpenDetails,
   userLat,
   userLng,
   accuracy,
@@ -433,7 +435,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                   </p>
                   <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
                     <button
-                      onClick={() => onSelectFacility(fac)}
+                      onClick={() => {
+                        if (onOpenDetails) onOpenDetails(fac);
+                        else onSelectFacility(fac);
+                      }}
                       style={{
                         padding: '4px 8px',
                         fontSize: 11,
