@@ -5,11 +5,13 @@ import {
   CheckCircle, PlusCircle, Activity, Sparkles 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../hooks/useLocation';
 import { Facility, RecommendationResult, BreakSession } from '../types';
 import { recommendationApi, breakApi, facilityApi } from '../services/api';
 import { FacilityCard } from '../components/FacilityCard';
 import { FacilityDetailModal } from '../components/FacilityDetailModal';
 import { ReportModal } from '../components/ReportModal';
+import { WeatherGuidance } from '../components/WeatherGuidance';
 
 interface DashboardPageProps {
   onNavigate: (tab: string) => void;
@@ -26,9 +28,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const [reportFacility, setReportFacility] = useState<Facility | null>(null);
   const [recentBreaks, setRecentBreaks] = useState<BreakSession[]>([]);
   
-  // Default coordinates: Peelamedu, Coimbatore
-  const userLat = 11.0267;
-  const userLng = 77.0118;
+  const { location } = useLocation();
+  const userLat = location.lat ?? 11.0267;
+  const userLng = location.lng ?? 77.0118;
 
   const loadRecommendations = async (needFilter = 'all') => {
     try {
@@ -139,7 +141,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
             <MapPin size={14} color="var(--primary)" />
-            <span>Currently near <strong>Peelamedu, Coimbatore</strong> (GPS synced)</span>
+            <span>Currently near <strong>{location.lat ? "Your Location" : "Peelamedu, Coimbatore"}</strong> (GPS synced)</span>
           </div>
         </div>
 
@@ -270,6 +272,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </button>
         </div>
       </div>
+
+      {/* Weather & Safety Guidance */}
+      <WeatherGuidance />
 
       {/* Intelligent Recommendations Section */}
       <div>

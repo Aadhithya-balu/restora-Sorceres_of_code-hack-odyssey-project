@@ -108,6 +108,12 @@ class FacilitySchema(FacilityBase):
 
     model_config = {"from_attributes": True}
 
+class AdaptiveSearchResponse(BaseModel):
+    facilities: List[FacilitySchema]
+    searchRadiusKm: float
+    expanded: bool
+    message: str
+
 
 # --- Crowdsourced Report Schemas ---
 

@@ -29,34 +29,54 @@ class FacilityService:
         service_filter: Optional[str] = None,
         access_type: Optional[str] = None,
         search_query: Optional[str] = None,
+        max_distance_meters: Optional[int] = None,
         current_user_id: Optional[int] = None
     ) -> List[dict]:
         query = db.query(Facility)
 
         if category and category.upper() != "ALL":
-            query = query.filter(Facility.category == category.upper())
+            cats = [c.strip().upper() for c in category.split(",") if c.strip().upper() != "ALL"]
+            db_cats = []
+            for c in cats:
+                if c == "WASHROOM":
+                    query = query.filter(Facility.has_washroom == True)
+                elif c == "WATER":
+                    query = query.filter(Facility.has_water == True)
+                elif c in ["REST", "REST_POINT"]:
+                    query = query.filter(Facility.has_rest == True)
+                elif c in ["CHARGE", "CHARGING"]:
+                    query = query.filter(Facility.has_charging == True)
+                elif c == "FOOD":
+                    query = query.filter(Facility.has_food == True)
+                else:
+                    db_cats.append(c)
+            if db_cats:
+                query = query.filter(Facility.category.in_(db_cats))
 
         if access_type and access_type.upper() != "ALL":
             query = query.filter(Facility.access_type == access_type.upper())
 
         if service_filter:
-            sf = service_filter.upper()
-            if sf == "REST":
-                query = query.filter(Facility.has_rest == True)
-            elif sf == "WASHROOM":
-                query = query.filter(Facility.has_washroom == True)
-            elif sf == "WATER":
-                query = query.filter(Facility.has_water == True)
-            elif sf in ["CHARGE", "CHARGING"]:
-                query = query.filter(Facility.has_charging == True)
-            elif sf == "SHADE":
-                query = query.filter(Facility.has_shade == True)
-            elif sf in ["PARK", "PARKING"]:
-                query = query.filter(Facility.has_parking == True)
-            elif sf == "FOOD":
-                query = query.filter(Facility.has_food == True)
-            elif sf == "MEDICAL":
-                query = query.filter(Facility.has_medical == True)
+            services = [s.strip().upper() for s in service_filter.split(",")]
+            for sf in services:
+                if sf == "ALL":
+                    continue
+                elif sf == "REST":
+                    query = query.filter(Facility.has_rest == True)
+                elif sf == "WASHROOM":
+                    query = query.filter(Facility.has_washroom == True)
+                elif sf == "WATER":
+                    query = query.filter(Facility.has_water == True)
+                elif sf in ["CHARGE", "CHARGING"]:
+                    query = query.filter(Facility.has_charging == True)
+                elif sf == "SHADE":
+                    query = query.filter(Facility.has_shade == True)
+                elif sf in ["PARK", "PARKING"]:
+                    query = query.filter(Facility.has_parking == True)
+                elif sf == "FOOD":
+                    query = query.filter(Facility.has_food == True)
+                elif sf == "MEDICAL":
+                    query = query.filter(Facility.has_medical == True)
 
         facilities = query.all()
 
@@ -80,6 +100,9 @@ class FacilityService:
                 )
                 if not matches:
                     continue
+
+            if max_distance_meters is not None and dist > max_distance_meters:
+                continue
 
             results.append({
                 "id": fac.id,
@@ -114,6 +137,70 @@ class FacilityService:
 
         results.sort(key=lambda x: x["distance_meters"])
         return results
+
+    @staticmethod
+    def get_adaptive_facilities(
+        db: Session,
+        lat: float,
+        lng: float,
+        category: Optional[str] = None,
+        service_filter: Optional[str] = None,
+        access_type: Optional[str] = None,
+        initial_radius_km: int = 5,
+        step_km: int = 1,
+        min_results: int = 5,
+        max_radius_km: int = 20,
+        current_user_id: Optional[int] = None
+    ) -> dict:
+        current_radius = initial_radius_km
+        expanded = False
+        final_facilities = []
+        
+        while current_radius <= max_radius_km:
+            results = FacilityService.get_facilities(
+                db, lat=lat, lng=lng, category=category,
+                service_filter=service_filter, access_type=access_type,
+                max_distance_meters=current_radius * 1000,
+                current_user_id=current_user_id
+            )
+            
+            if len(results) >= min_results:
+                final_facilities = results[:min_results]
+                expanded = (current_radius > initial_radius_km)
+                msg = f"{len(final_facilities)} facilities found within {current_radius} km"
+                if len(results) == 0 and current_radius == initial_radius_km:
+                    msg = f"No suitable facilities found within {current_radius} km."
+                
+                return {
+                    "facilities": final_facilities,
+                    "searchRadiusKm": current_radius,
+                    "expanded": expanded,
+                    "message": msg
+                }
+            
+            # Not enough results, expand radius
+            current_radius += step_km
+            
+        # Reached max radius
+        results = FacilityService.get_facilities(
+            db, lat=lat, lng=lng, category=category,
+            service_filter=service_filter, access_type=access_type,
+            max_distance_meters=max_radius_km * 1000,
+            current_user_id=current_user_id
+        )
+        final_facilities = results[:min_results]
+        
+        if len(final_facilities) > 0:
+            msg = f"{len(final_facilities)} facilities found within {max_radius_km} km"
+        else:
+            msg = f"No suitable facilities found within {max_radius_km} km."
+            
+        return {
+            "facilities": final_facilities,
+            "searchRadiusKm": max_radius_km,
+            "expanded": True,
+            "message": msg
+        }
 
     @staticmethod
     def get_facility_by_id(
