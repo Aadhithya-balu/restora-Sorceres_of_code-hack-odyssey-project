@@ -267,14 +267,14 @@ class RecommendationResponse(BaseModel):
 # --- Route Planning Schemas ---
 
 class RoutePlanRequest(BaseModel):
-    origin_name: str
-    origin_lat: float
-    origin_lng: float
-    destination_name: str
-    destination_lat: float
-    destination_lng: float
+    origin_name: str = Field(..., min_length=1)
+    origin_lat: float = Field(..., ge=-90.0, le=90.0)
+    origin_lng: float = Field(..., ge=-180.0, le=180.0)
+    destination_name: str = Field(..., min_length=1)
+    destination_lat: float = Field(..., ge=-90.0, le=90.0)
+    destination_lng: float = Field(..., ge=-180.0, le=180.0)
     required_services: List[str] = []
-    max_detour_km: float = 1.5
+    max_detour_km: float = Field(default=1.5, ge=0.1, le=10.0)
 
 class RouteFacilityMatch(BaseModel):
     facility: FacilitySchema

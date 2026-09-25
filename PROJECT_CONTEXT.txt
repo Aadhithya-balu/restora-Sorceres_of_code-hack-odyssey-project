@@ -1,0 +1,452 @@
+================================================================================
+RESTORA — GIG-WORKER REST-POINT NETWORK
+COMPREHENSIVE PROJECT ARCHITECTURE, DOMAIN, API & AGENT HANDOFF SPECIFICATION
+================================================================================
+Document Type: Full Project Technical Specification & Agent Ingestion Manual
+Version: 1.0.0
+Target Audience: AI Coding Agents, Full-Stack Engineers, System Architects
+Last Updated: 2026-09-26
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE OVERVIEW & PROBLEM STATEMENT
+--------------------------------------------------------------------------------
+India's rapid gig economy powers urban logistics through millions of platform
+workers (Zomato, Swiggy, Zepto, Blinkit, Rapido, Uber, Porter). These workers
+regularly operate in grueling 10–14 hour shifts under extreme weather (38°C–44°C).
+
+The core operational vulnerabilities they face include:
+- Denial of Restroom Access: Commercial complexes and upscale restaurants routinely
+  prohibit delivery partners and cab drivers from using their sanitation facilities.
+- Unreliable Drinking Water: Public dispensers are frequently broken, dry, or locked
+  behind gated commercial compounds.
+- EV & Device Charging Anxiety: Delivery smartphones run high-drain GPS navigation
+  continuously, and EV scooter riders face sudden battery exhaustion along corridors.
+- Heatstroke, Fatigue & Accident Risk: High-pressure platform delivery algorithms
+  incentivize non-stop delivery runs, resulting in dehydration and fatigue-induced
+  road accidents.
+
+RESTORA is a civic-tech urban infrastructure platform that solves these problems
+by discovering, verifying, routing to, and evaluating safe urban rest stops with clean
+washrooms, free drinking water, phone/EV charging, shade, and parking.
+
+--------------------------------------------------------------------------------
+2. SYSTEM ARCHITECTURE & TECH STACK
+--------------------------------------------------------------------------------
+The project is built as a production-grade full-stack web application:
+
+FRONTEND:
+- Framework: React 19 (TypeScript)
+- Build Tool: Vite 8
+- Mapping: Leaflet 1.9 + React-Leaflet 5 (OpenStreetMap tile layers, zero paid API keys)
+- Styling: Custom Vanilla CSS design system with responsive layouts & modern tokens
+- Icons: Lucide-React
+- Geolocation: Native Browser Geolocation API (getCurrentPosition + watchPosition)
+  with a 35-meter displacement threshold to prevent GPS jitter and API spam.
+- State Management: React Context (AuthContext) and state hooks.
+
+BACKEND:
+- Framework: Python 3.11+ FastAPI (Asynchronous REST API)
+- Persistence: SQLAlchemy 2.0 ORM
+- Database Options:
+  * Primary: Supabase PostgreSQL (via transaction pooler port 6543)
+  * Fallback: Local SQLite database (restora.db) with automatic fallback
+- Security: PBKDF2-SHA256 password hashing, HS256 JWT Bearer token authentication
+- Mathematical Services:
+  * Haversine Great-Circle distance calculation in meters
+  * Corridor Vector Projection for detour calculation along delivery routes
+  * Multi-factor explainable recommendation scoring engine
+
+DEV RUNNERS & SCRIPTS:
+- `dev_all.py` / `npm run dev:all`: Concurrent runner launching FastAPI (port 8000)
+  and Vite dev server (port 5173 with HMR).
+- `run_dev.py` / `npm run dev:backend`: Backend only.
+- `check_db.py`: Diagnostic connectivity script testing Supabase PostgreSQL / SQLite.
+- `verify_fullstack.py`: End-to-end automated verification script testing APIs and HTML.
+- `backend/tests/test_api.py`: Automated pytest test suite covering all 7 modules.
+
+--------------------------------------------------------------------------------
+3. THE 7 CORE FUNCTIONAL MODULES
+--------------------------------------------------------------------------------
+
+MODULE A — WORKER AUTHENTICATION & PROFILE:
+- JWT Bearer token authentication with role-based access control (`worker` vs `admin`).
+- Profile fields tailored to field gig work:
+  * Name, email, phone number.
+  * Worker Category: delivery_rider, cab_driver, courier_worker, logistics_worker, other.
+  * Preferred Language: en (English), ta (Tamil), hi (Hindi), te (Telugu), ml (Malayalam).
+  * Work Area: Primary corridor (e.g. "Peelamedu, Coimbatore").
+  * Hourly Rate Estimate (INR): Used exclusively for personal voluntary downtime estimates.
+- Guest Mode: Complete map viewing, locality search, and nearby discovery work
+  without requiring login. Login is only required for contributing verifications,
+  incident reports, or saving bookmarks.
+
+MODULE B — REST-POINT DISCOVERY & ADAPTIVE MAP:
+- Interactive Leaflet map with custom emoji pins:
+  * Rest / Seating: 🌳 (Indigo)
+  * Washroom: 🚻 (Emerald)
+  * Drinking Water: 💧 (Blue)
+  * Phone/EV Charging: 🔋 (Amber)
+  * Subsidized Food: 🍱 (Red)
+  * Petrol Pump: ⛽ (Slate)
+- Distinguishes Live GPS User Marker (pulsing blue) from Searched Locality Marker
+  (amber pinpoint) so manual searches are never falsely claimed as live GPS.
+- Adaptive Search Radius Engine: If fewer than 5 facilities are found within the
+  initial 5 km radius, the search radius automatically increments by 1 km steps up
+  to 20 km to discover the nearest verified oasis.
+- Multi-criteria filter chips: Washroom, Drinking Water, Rest Seating, Charging, Food, Petrol Pump.
+
+MODULE C — EXPLAINABLE INTELLIGENT REST RECOMMENDATIONS:
+- Deterministic 100-point composite scoring algorithm:
+  1. Proximity Score (0 to 40 pts): Linear decay from 40 pts at 0m to 0 pts at max_distance.
+  2. Amenity Coverage Score (0 to 35 pts): Ratio of worker's selected needs matched.
+  3. Operational & Access Status (0 to 15 pts): Open (+8 pts), Public Access (+7 pts).
+  4. Verification Freshness (0 to 10 pts): Verified status (+5 pts), report in last 24h (+5 pts).
+- Algorithmic Honesty: Every recommendation returns an explicit human-readable
+  explanation string (e.g. "Recommended (95.3/100) because it is 353m away, matches
+  your requested Water and Washroom, and has verified status"). No black-box AI scores.
+
+MODULE D — REST-AWARE CORRIDOR ROUTE PLANNING:
+- Designed for riders traveling between a pickup and a delivery dropoff.
+- Geometry & Vector Mathematics:
+  * Projects each rest facility onto the straight-line segment connecting Origin (x1, y1)
+    and Destination (x2, y2).
+  * Calculates the closest point on the corridor segment and computes the perpendicular
+    detour distance (d_detour) using the Haversine formula.
+  * Filters facilities within worker's customizable detour tolerance (0.5 km to 3.0 km).
+  * Sorts candidate stops by lowest detour kilometers.
+  * Explicit disclaimer: Informs workers that detours are geometric approximations
+    and actual travel time may vary with one-way streets and traffic signals.
+
+MODULE E — CROWDSOURCED INCIDENT REPORTING & MODERATION:
+- Workers can flag facility conditions in under 10 seconds:
+  * Issue Types: WATER_OUT_OF_ORDER, WASHROOM_DIRTY_LOCKED, CHARGING_NOT_WORKING,
+    FACILITY_CLOSED, ACCESS_DENIED, SAFETY_CONCERN, INCORRECT_HOURS, OTHER.
+  * Description & optional photo proof URL.
+- Moderation Workflow:
+  * Reports enter a `PENDING` queue.
+  * Admins review and mark `APPROVED`, `REJECTED`, or `FLAGGED` with moderator notes.
+  * Approving an issue report automatically updates facility status to `RECENTLY_REPORTED`.
+- One-Click Verification: Workers on site can click "Verify Now" to confirm all
+  amenities are functioning, incrementing the verification count.
+
+MODULE F — VOLUNTARY BREAK PLANNER & INCOME IMPACT ESTIMATOR:
+- Voluntary Rest Break Session Tracker:
+  * Workers can start 10, 15, 20, 30, or 45-minute rest pauses with an active timer.
+  * One-tap completion logs actual vs. planned duration.
+- Illustrative Opportunity Cost Estimator:
+  * Formula: Opportunity Cost = (Hourly Rate / 60) * Break Duration.
+  * Ethical Safeguards: Explicitly discloses that rest pauses are personal health
+    choices. Restora NEVER transmits break durations to platform algorithms or
+    penalizes workers. Taking shade breaks prevents heatstroke and reduces crash risk.
+
+MODULE G — ADMIN DASHBOARD & URBAN SERVICE GAP ANALYTICS:
+- Platform Overview: Total rest points, verified count, pending reports, break sessions,
+  registered workers.
+- Facility CRUD: Add new verified points, edit metadata, or decommission facilities.
+- Crowdsourced Report Moderation Queue with reviewer audit notes.
+- Urban Service Gap Analytics: Visualizes high-density zones missing clean washrooms,
+  canopy shade, or EV charging infrastructure to advocate for civic improvements.
+
+--------------------------------------------------------------------------------
+4. DATABASE SCHEMA & ENTITY DEFINITIONS
+--------------------------------------------------------------------------------
+
+Table: `users`
+- id (Integer, PK)
+- name (VarChar 120, NOT NULL)
+- email (VarChar 150, UNIQUE, NOT NULL)
+- phone (VarChar 30, Nullable)
+- hashed_password (VarChar 255, NOT NULL)
+- role (VarChar 30, default 'worker') -> 'worker' | 'admin'
+- worker_category (VarChar 50, default 'delivery_rider')
+- preferred_language (VarChar 20, default 'en') -> 'ta' | 'en' | 'hi' | 'te' | 'ml'
+- work_area (VarChar 120, default 'Peelamedu, Coimbatore')
+- hourly_rate_estimate (Float, default 180.0)
+- created_at (DateTime, default UTC now)
+
+Table: `facilities`
+- id (Integer, PK)
+- name (VarChar 180, NOT NULL)
+- category (VarChar 50, default 'REST_POINT') -> REST_POINT, PETROL_PUMP, PARTNER_CAFE, etc.
+- address (VarChar 255, NOT NULL)
+- zone (VarChar 100, default 'Peelamedu')
+- city (VarChar 100, default 'Coimbatore')
+- lat (Float, NOT NULL)
+- lng (Float, NOT NULL)
+- is_open (Boolean, default True)
+- operating_hours (VarChar 100, default '06:00 - 23:00')
+- access_type (VarChar 50, default 'PUBLIC') -> PUBLIC, PRIVATE, PERMISSION_REQUIRED, RESTRICTED
+- pricing_info (VarChar 100, default 'Free to use')
+- accessibility_info (VarChar 150, default 'Ground level, 2W accessible')
+- Amenities (Booleans): has_rest, has_washroom, has_water, has_charging, has_shade,
+  has_parking, has_food, has_medical
+- verification_status (VarChar 50, default 'VERIFIED') -> VERIFIED, RECENTLY_REPORTED, UNVERIFIED
+- verification_count (Integer, default 1)
+- last_reported_at (DateTime, default UTC now)
+- notes (Text, Nullable)
+- created_by_id (Integer, FK -> users.id, Nullable)
+- created_at (DateTime, default UTC now)
+
+Table: `facility_reports`
+- id (Integer, PK)
+- facility_id (Integer, FK -> facilities.id, NOT NULL)
+- user_id (Integer, FK -> users.id, NOT NULL)
+- user_name (VarChar 120, default 'Anonymous Worker')
+- report_type (VarChar 60, NOT NULL)
+- description (Text, NOT NULL)
+- image_url (VarChar 255, Nullable)
+- status (VarChar 30, default 'PENDING') -> PENDING, APPROVED, REJECTED, FLAGGED
+- reviewed_by_id (Integer, Nullable)
+- review_notes (VarChar 255, Nullable)
+- created_at (DateTime, default UTC now)
+
+Table: `facility_verifications`
+- id (Integer, PK)
+- facility_id (Integer, FK -> facilities.id, NOT NULL)
+- user_id (Integer, FK -> users.id, NOT NULL)
+- washroom_ok, water_ok, charging_ok, rest_ok (Booleans)
+- notes (VarChar 255, Nullable)
+- created_at (DateTime, default UTC now)
+
+Table: `bookmarks`
+- id (Integer, PK)
+- user_id (Integer, FK -> users.id, NOT NULL)
+- facility_id (Integer, FK -> facilities.id, NOT NULL)
+- created_at (DateTime, default UTC now)
+
+Table: `break_sessions`
+- id (Integer, PK)
+- user_id (Integer, FK -> users.id, NOT NULL)
+- facility_id (Integer, FK -> facilities.id, Nullable)
+- planned_duration_minutes (Integer, default 20)
+- actual_duration_minutes (Integer, Nullable)
+- start_time (DateTime, default UTC now)
+- end_time (DateTime, Nullable)
+- status (VarChar 30, default 'COMPLETED') -> PLANNED, ACTIVE, COMPLETED, CANCELLED
+- notes (VarChar 255, Nullable)
+- created_at (DateTime, default UTC now)
+
+Table: `support_resources`
+- id (Integer, PK)
+- title (VarChar 180, NOT NULL)
+- category (VarChar 60) -> WELFARE_BOARD, EMERGENCY_CONTACT, CLINIC_PARTNER, HEALTH_GUIDELINE
+- description (Text, NOT NULL)
+- contact_number (VarChar 50, Nullable)
+- address (VarChar 255, Nullable)
+- link_url (VarChar 255, Nullable)
+- is_verified (Boolean, default True)
+- created_at (DateTime, default UTC now)
+
+Table: `partner_offers`
+- id (Integer, PK)
+- title (VarChar 180, NOT NULL)
+- partner_name (VarChar 150, NOT NULL)
+- facility_id (Integer, FK -> facilities.id, Nullable)
+- offer_type (VarChar 60) -> DISCOUNT_BEVERAGE, FREE_CHARGING, REST_PARTNERSHIP, MEAL_SUBSIDY
+- description (Text, NOT NULL)
+- terms (VarChar 255, NOT NULL)
+- valid_until (VarChar 50, default 'Ongoing 2026')
+- is_active (Boolean, default True)
+- created_at (DateTime, default UTC now)
+
+Table: `activity_logs`
+- id (Integer, PK)
+- user_id (Integer, Nullable)
+- time_str (VarChar 20, NOT NULL)
+- title (VarChar 150, NOT NULL)
+- subtitle (VarChar 255, NOT NULL)
+- category (VarChar 50, default 'REST')
+- created_at (DateTime, default UTC now)
+
+--------------------------------------------------------------------------------
+5. REST API SPECIFICATION
+--------------------------------------------------------------------------------
+
+Authentication & Worker Profile:
+- `POST /api/auth/register` -> Creates user, returns JWT `{ access_token, token_type, user }`
+- `POST /api/auth/login` -> Authenticates email & password, returns JWT
+- `GET /api/auth/me` -> Retrieves authenticated worker profile
+- `PATCH /api/auth/profile` -> Updates profile attributes (preferred_language, work_area, rate)
+
+Facilities Discovery:
+- `GET /api/facilities/nearby?lat={lat}&lng={lng}&category={cat}&service={svc}&initialRadius=5&step=1&minResults=5&maxRadius=20`
+  -> Adaptive radius search returning `{ facilities, searchRadiusKm, expanded, message }`
+- `GET /api/facilities?lat={lat}&lng={lng}&category={cat}&service={svc}&access_type={acc}&q={q}`
+  -> Returns list of facilities sorted by distance
+- `GET /api/facilities/{id}?lat={lat}&lng={lng}` -> Detailed facility view
+- `POST /api/facilities` -> Create facility (Admin/Worker authenticated)
+- `PATCH /api/facilities/{id}` -> Update facility
+- `DELETE /api/facilities/{id}` -> Delete facility (Admin only)
+- `POST /api/facilities/verify` -> One-click amenity verification
+
+Intelligent Recommendations & Routing:
+- `POST /api/recommendations/intelligent`
+  Body: `{ lat, lng, need_water, need_washroom, need_charging, need_rest, need_shade, max_distance_meters }`
+  Returns: `{ total_found, recommendations: [{ facility, score, explanation }] }`
+- `POST /api/routes/plan`
+  Body: `{ origin_name, origin_lat, origin_lng, destination_name, destination_lat, destination_lng, required_services, max_detour_km }`
+  Returns: `{ origin, destination, total_route_distance_km, facilities: [{ facility, straight_line_dist_km, estimated_corridor_detour_km, stop_recommendation_reason }] }`
+
+Crowdsourced Reports:
+- `POST /api/reports` -> Submit issue report `{ facility_id, report_type, description, image_url }`
+- `GET /api/reports?facility_id={id}&status={status}` -> List reports
+- `POST /api/reports/{id}/moderate` -> Admin moderation `{ status: "APPROVED"|"REJECTED"|"FLAGGED", review_notes }`
+
+Break Sessions & Bookmarks:
+- `POST /api/breaks` -> Start break session `{ facility_id, planned_duration_minutes, notes }`
+- `GET /api/breaks` -> List worker break sessions
+- `PATCH /api/breaks/{id}` -> Complete break session `{ status: "COMPLETED", actual_duration_minutes }`
+- `POST /api/breaks/estimate-impact` -> `{ hourly_rate_estimate, planned_break_minutes }` -> Returns opportunity amount & health disclaimer
+- `POST /api/bookmarks/{facility_id}` -> Toggle bookmark
+- `GET /api/bookmarks?lat={lat}&lng={lng}` -> List bookmarked facilities
+
+Support Resources & Admin Overview:
+- `GET /api/support-resources?category={cat}` -> Welfare boards, emergency numbers, clinics
+- `GET /api/partner-offers` -> Worker beverage/meal subsidies & charging discounts
+- `GET /api/admin/overview` -> Platform metrics & service gap analytics
+- `GET /api/status` -> System health and active module status
+
+--------------------------------------------------------------------------------
+6. DIRECTORY STRUCTURE & FILE OWNERSHIP
+--------------------------------------------------------------------------------
+
+Restora/
+├── .env                              # Environment configuration (Supabase/SQLite, JWT, ports)
+├── .env.example                      # Reference template for environment variables
+├── package.json                      # Workspace root scripts (dev:all, build, test, verify)
+├── dev_all.py                        # Concurrent runner for FastAPI & Vite
+├── run_dev.py                        # Standalone runner for FastAPI backend
+├── check_db.py                       # Supabase / SQLite connectivity health check
+├── verify_fullstack.py               # E2E fullstack verification test script
+├── supabase_schema.sql               # Full DDL schema & seed data for Supabase PostgreSQL
+├── inject_tn_facilities.py           # Multi-district Tamil Nadu rest points seeder
+├── generate_tn_points.py             # Coordinate synthesizer for TN urban logistics corridors
+│
+├── backend/
+│   ├── requirements.txt              # fastapi, uvicorn, pydantic, sqlalchemy, psycopg2-binary, email-validator
+│   ├── tests/
+│   │   └── test_api.py               # Automated pytest suite testing all 7 modules
+│   └── app/
+│       ├── main.py                   # FastAPI app entry point, CORS, routers, static dist mount
+│       ├── database.py               # SQLAlchemy engine with Supabase pooler & SQLite fallback
+│       ├── models.py                 # Core ORM models (User, Facility, FacilityReport, etc.)
+│       ├── schemas.py                # Pydantic v2 validation & response schemas
+│       ├── auth.py                   # PBKDF2 password hashing & HS256 JWT token utilities
+│       ├── seed_data.py              # Initial seed data for Peelamedu/Avinashi Rd, Coimbatore
+│       ├── routers/                  # Modular FastAPI routers
+│       │   ├── auth.py
+│       │   ├── facilities.py
+│       │   ├── recommendations.py
+│       │   ├── routes.py
+│       │   ├── reports.py
+│       │   ├── breaks.py
+│       │   ├── support.py
+│       │   └── admin.py
+│       └── services/                 # Core domain & mathematical algorithms
+│           ├── facility_service.py   # Haversine distance & adaptive radius expansion
+│           ├── recommendation_service.py # 100-pt explainable recommendation scoring
+│           ├── route_service.py      # Corridor vector projection & detour calculations
+│           ├── report_service.py     # Incident reporting & moderation logic
+│           ├── break_service.py      # Break logging & opportunity cost estimator
+│           ├── support_service.py    # Support resources & partner offers
+│           └── admin_service.py      # Platform metrics & service gap analytics
+│
+└── frontend/
+    ├── package.json                  # React 19, Vite, Leaflet, React-Leaflet, Lucide-React
+    ├── vite.config.ts                # Vite configuration
+    ├── index.html                    # Root HTML document
+    └── src/
+        ├── main.tsx                  # React DOM root mounting
+        ├── App.tsx                   # Top-level state-driven router & layout wrapper
+        ├── index.css                 # Comprehensive CSS design tokens, cards, and animations
+        ├── types/
+        │   └── index.ts              # TypeScript interfaces matching backend schemas
+        ├── services/
+        │   ├── api.ts                # Fetch client for all backend REST endpoints
+        │   ├── geocodeService.ts     # Tamil Nadu corridor presets & debounced Nominatim OSM
+        │   └── weatherApi.ts         # Temperature & hydration safety guidance service
+        ├── hooks/
+        │   └── useLocation.ts        # Geolocation tracking with 35m displacement throttling
+        ├── context/
+        │   └── AuthContext.tsx       # Auth token persistence & login modal state
+        ├── components/
+        │   ├── Navbar.tsx            # Sticky navigation bar with role badges & language switcher
+        │   ├── Footer.tsx            # Footer with quick links & gig-worker emergency helpline
+        │   ├── InteractiveMap.tsx    # Leaflet map with Live GPS vs Searched Locality markers
+        │   ├── FacilityCard.tsx      # Facility preview card with suitability & availability tags
+        │   ├── FacilityDetailModal.tsx # Detail modal with Alternative Recommendations Engine
+        │   ├── ReportModal.tsx       # Crowdsourced incident condition submission modal
+        │   ├── AuthModal.tsx         # Worker login and registration dialog
+        │   └── WeatherGuidance.tsx   # Live temperature, humidity, and heat exhaustion alerts
+        └── pages/
+            ├── LandingPage.tsx       # Marketing and narrative landing page
+            ├── ExplorePage.tsx       # Live map exploration, corridor search, and filters
+            ├── RoutePage.tsx         # Delivery pickup-to-dropoff corridor detour planner
+            ├── BreaksPage.tsx        # Break session timer & illustrative income estimator
+            ├── DashboardPage.tsx     # Personalized worker home screen with weather guidance
+            ├── SupportPage.tsx       # Welfare board contacts, clinic partners, and subsidies
+            ├── ProfilePage.tsx       # Worker language, work corridor, and hourly rate settings
+            └── AdminPage.tsx         # Report moderation queue & urban service gap analytics
+
+--------------------------------------------------------------------------------
+7. AGENT ROLES & STRICT COLLABORATION BOUNDARIES
+--------------------------------------------------------------------------------
+This project is developed under a strict 3-agent division of labor:
+
+AGENT 1 (AswinNS-dev / Maps & Facility Discovery):
+- OWNERSHIP: Map component (`InteractiveMap.tsx`), location hook (`useLocation.ts`),
+  nearby facility discovery UI, facility cards/modals, geocode service, Explore page.
+- BOUNDARIES: Must NOT modify database schemas, migrations, backend models, auth
+  providers, or the RakshitArtha income protection page.
+
+AGENT 2 (Authentication & Income Protection):
+- OWNERSHIP: Auth provider, login/signup flows, session management, and the
+  dedicated RakshitArtha income-protection feature.
+
+AGENT 3 (Database & Infrastructure):
+- OWNERSHIP: Database schemas, SQL migrations, ORM tables, Supabase configurations.
+
+--------------------------------------------------------------------------------
+8. PRE-SEEDED TEST CREDENTIALS
+--------------------------------------------------------------------------------
+For testing and demonstration, the database includes pre-seeded user accounts:
+
+Role: Delivery Rider
+Email: aadhi@restora.app
+Password: Worker@123
+Primary Work Area: Peelamedu, Coimbatore
+
+Role: Cab Driver
+Email: suresh@restora.app
+Password: Worker@123
+Primary Work Area: Coimbatore Central
+
+Role: Platform Admin
+Email: admin@restora.app
+Password: Admin@123
+Primary Work Area: Platform Operations
+
+--------------------------------------------------------------------------------
+9. EXECUTION & VERIFICATION CHECKS
+--------------------------------------------------------------------------------
+1. Check Database Connectivity:
+   `python check_db.py`
+
+2. Run the Full-Stack Dev Environment:
+   `npm run dev:all`   (or: `python dev_all.py`)
+   - Frontend Live Dev: http://localhost:5173
+   - Backend API Docs:  http://localhost:8000/docs
+
+3. Run Full-Stack E2E Test Suite:
+   `python verify_fullstack.py`
+
+4. Run Backend Automated Pytest Suite:
+   `python -m pytest backend/tests/test_api.py -v`
+   (All 9 tests passing 100%)
+
+5. Build Frontend Production Bundle:
+   `npm --prefix frontend run build`
+   (0 TypeScript errors, 0 linter errors)
+================================================================================
+END OF RESTORA PROJECT SPECIFICATION
+================================================================================
