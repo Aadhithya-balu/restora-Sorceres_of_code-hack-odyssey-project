@@ -29,15 +29,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const [recentBreaks, setRecentBreaks] = useState<BreakSession[]>([]);
   
   const { location } = useLocation();
-  const userLat = location.lat ?? 11.0267;
-  const userLng = location.lng ?? 77.0118;
+  const [useCoimbatoreCorridor, setUseCoimbatoreCorridor] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [demoSeedMessage, setDemoSeedMessage] = useState<string | null>(null);
+
+  const activeLat = useCoimbatoreCorridor ? 11.0267 : (location.lat ?? 11.0267);
+  const activeLng = useCoimbatoreCorridor ? 77.0118 : (location.lng ?? 77.0118);
 
   const loadRecommendations = async (needFilter = 'all') => {
     try {
       setLoadingRecommendations(true);
       const params: any = {
-        lat: userLat,
-        lng: userLng,
+        lat: activeLat,
+        lng: activeLng,
         max_distance_meters: 5000
       };
 
@@ -57,6 +61,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
     }
   };
 
+  const handleSeedDemoNearMe = async () => {
+    try {
+      setSeedingDemo(true);
+      setDemoSeedMessage(null);
+      const res = await facilityApi.seedDemoFacilities(activeLat, activeLng, 'Jury Evaluation Zone');
+      setDemoSeedMessage(res.message);
+      await loadRecommendations(activeNeed);
+      setTimeout(() => setDemoSeedMessage(null), 6000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to seed demo facilities');
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
+
   const loadRecentBreaks = async () => {
     if (!isAuthenticated) return;
     try {
@@ -70,7 +89,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   useEffect(() => {
     loadRecommendations(activeNeed);
     loadRecentBreaks();
-  }, [activeNeed, isAuthenticated]);
+  }, [activeNeed, isAuthenticated, activeLat, activeLng, useCoimbatoreCorridor]);
 
   const handleNeedClick = (needKey: string) => {
     const next = activeNeed === needKey ? 'all' : needKey;
@@ -139,10 +158,48 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           <h1 style={{ fontSize: 24, marginBottom: 4 }}>
             Vanakkam, {user ? user.name : 'Rider'}! 🛵
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
             <MapPin size={14} color="var(--primary)" />
-            <span>Currently near <strong>{location.lat ? "Your Location" : "Peelamedu, Coimbatore"}</strong> (GPS synced)</span>
+            <span>Currently: <strong>{useCoimbatoreCorridor ? "Coimbatore Corridor (Demo)" : (location.lat ? "My Live GPS" : "Peelamedu, Coimbatore")}</strong> ({activeLat.toFixed(3)}, {activeLng.toFixed(3)})</span>
+            <button
+              type="button"
+              onClick={() => setUseCoimbatoreCorridor(!useCoimbatoreCorridor)}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: 11, padding: '2px 8px', height: 26 }}
+              title="Toggle between real GPS and Coimbatore's pre-configured corridor"
+            >
+              {useCoimbatoreCorridor ? '📍 Use My GPS' : '🏢 View Coimbatore'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSeedDemoNearMe}
+              disabled={seedingDemo}
+              className="btn btn-outline btn-sm"
+              style={{ fontSize: 11, padding: '2px 8px', height: 26 }}
+              title="Add 5 verified demo rest hubs around your location"
+            >
+              <PlusCircle size={12} />
+              <span>{seedingDemo ? 'Creating...' : '+ Add Demo Hubs Here'}</span>
+            </button>
           </div>
+
+          {demoSeedMessage && (
+            <div style={{
+              backgroundColor: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#047857',
+              padding: '6px 12px',
+              fontSize: 12,
+              borderRadius: 6,
+              marginTop: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}>
+              <CheckCircle size={14} />
+              <span>{demoSeedMessage}</span>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -302,11 +359,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             Calculating closest rest points...
           </div>
         ) : recommendations.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '30px' }}>
-            <p>No rest points found matching your current filter in Peelamedu.</p>
-            <button onClick={() => setActiveNeed('all')} className="btn btn-primary btn-sm" style={{ marginTop: 10 }}>
-              Show All Nearby Points
-            </button>
+          <div className="card" style={{ textAlign: 'center', padding: '36px 20px', backgroundColor: '#FEF3C7', border: '1px solid #FDE68A' }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              backgroundColor: '#FDE68A',
+              color: '#B45309',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 10px'
+            }}>
+              <MapPin size={24} />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#92400E', marginBottom: 4 }}>
+              No Rest Points Near Your Current Location
+            </h3>
+            <p style={{ fontSize: 13, color: '#B45309', maxWidth: 460, margin: '0 auto 16px' }}>
+              No rest facilities found within 5 km of ({activeLat.toFixed(4)}, {activeLng.toFixed(4)}). You can generate demo rest points at your location or switch to Coimbatore's active corridor.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleSeedDemoNearMe}
+                disabled={seedingDemo}
+                className="btn btn-primary btn-sm"
+              >
+                <PlusCircle size={14} />
+                <span>{seedingDemo ? 'Creating...' : '📍 Add 5 Demo Rest Hubs Here'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseCoimbatoreCorridor(true)}
+                className="btn btn-outline btn-sm"
+              >
+                <span>🏢 Switch to Coimbatore Corridor</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveNeed('all')}
+                className="btn btn-secondary btn-sm"
+              >
+                Show All Points
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-3">

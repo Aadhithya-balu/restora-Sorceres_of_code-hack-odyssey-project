@@ -43,6 +43,8 @@ export const ExplorePage: React.FC = () => {
     clearManualLocation, 
     permissionGranted 
   } = useLocation();
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [demoSeedMessage, setDemoSeedMessage] = useState<string | null>(null);
 
   // Effective coordinates for nearby discovery (User GPS or Manual Locality)
   const effectiveLat = location.lat ?? 11.0267;
@@ -105,6 +107,21 @@ export const ExplorePage: React.FC = () => {
       setLoading(false);
     }
   }, [effectiveLat, effectiveLng, selectedCategories]);
+
+  const handleSeedDemoNearMe = async () => {
+    try {
+      setSeedingDemo(true);
+      setDemoSeedMessage(null);
+      const res = await facilityApi.seedDemoFacilities(effectiveLat, effectiveLng, 'Jury Evaluation Zone');
+      setDemoSeedMessage(res.message);
+      await loadFacilities();
+      setTimeout(() => setDemoSeedMessage(null), 6000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to seed demo facilities');
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
 
   // Refresh facilities when coordinates or category filters change
   useEffect(() => {
@@ -408,6 +425,73 @@ export const ExplorePage: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* Jury / Evaluation Demo Mode Toolbar */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 10,
+          paddingTop: 8,
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: 8,
+          fontSize: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
+            <MapPin size={14} color="var(--primary)" />
+            <span>
+              Location: <strong>{location.isManualSearch ? (location.manualLocationName || 'Selected Locality') : 'My Live GPS'}</strong> ({effectiveLat.toFixed(4)}, {effectiveLng.toFixed(4)})
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (location.isManualSearch) {
+                  clearManualLocation();
+                } else {
+                  handleSelectLocality(PRESET_CORRIDORS[0]);
+                }
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: 11, padding: '4px 10px' }}
+              title="Toggle between your live GPS and Coimbatore's pre-configured corridor"
+            >
+              {location.isManualSearch ? '📍 Switch to My Real GPS' : '🏢 View Coimbatore Corridor'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSeedDemoNearMe}
+              disabled={seedingDemo}
+              className="btn btn-primary btn-sm"
+              style={{ fontSize: 11, padding: '4px 10px' }}
+              title="Add 5 verified demo rest points around current map coordinates"
+            >
+              <PlusCircle size={13} />
+              <span>{seedingDemo ? 'Creating...' : '+ Add Demo Hubs Here'}</span>
+            </button>
+          </div>
+        </div>
+
+        {demoSeedMessage && (
+          <div style={{
+            backgroundColor: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            color: '#047857',
+            padding: '6px 12px',
+            fontSize: 12,
+            borderRadius: 6,
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <CheckCircle size={14} />
+            <span>{demoSeedMessage}</span>
+          </div>
+        )}
       </div>
 
       {/* Map Area */}
@@ -561,22 +645,57 @@ export const ExplorePage: React.FC = () => {
             backgroundColor: 'var(--surface)',
             padding: '20px 24px',
             borderRadius: 16,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
             textAlign: 'center',
+            maxWidth: 360,
             width: '90%',
-            maxWidth: 320,
             border: '1px solid var(--border)'
           }}>
-            <MapPin size={32} color="var(--text-muted)" style={{ margin: '0 auto 10px' }} />
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
-              No facilities within {searchRadiusKm} km
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
-              Try clearing filters or search another corridor in Tamil Nadu.
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              backgroundColor: '#FEF3C7',
+              color: '#D97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <MapPin size={26} />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>No Rest Hubs Near Here</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+              No rest points found within {searchRadiusKm} km of coordinates ({effectiveLat.toFixed(3)}, {effectiveLng.toFixed(3)}).
             </p>
-            <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={handleResetFilters}>
-              Clear Filters
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                onClick={handleSeedDemoNearMe}
+                disabled={seedingDemo}
+                className="btn btn-primary btn-sm"
+                style={{ justifyContent: 'center', padding: '10px 14px' }}
+              >
+                <PlusCircle size={15} />
+                <span>{seedingDemo ? 'Generating...' : '📍 Add 5 Demo Rest Hubs Here'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectLocality(PRESET_CORRIDORS[0])}
+                className="btn btn-outline btn-sm"
+                style={{ justifyContent: 'center' }}
+              >
+                <span>🏢 Switch to Coimbatore Corridor</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ justifyContent: 'center' }}
+                onClick={handleResetFilters}
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
         )}
 
