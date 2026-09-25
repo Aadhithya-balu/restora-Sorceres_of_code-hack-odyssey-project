@@ -1,0 +1,26 @@
+{
+  "name": "restora",
+  "version": "1.0.0",
+  "description": "Restora — Gig-Worker Rest-Point Network",
+  "private": true,
+  "scripts": {
+    "dev:all": "python dev_all.py",
+    "dev": "python dev_all.py",
+    "dev:backend": "python run_dev.py",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "python -m pytest backend/tests/test_api.py -v",
+    "verify": "python verify_fullstack.py"
+  },
+  "keywords": [
+    "restora",
+    "gig-workers",
+    "rest-points",
+    "route-corridor",
+    "hydration",
+    "fastapi",
+    "react"
+  ],
+  "author": "Restora Team",
+  "license": "MIT"
+}
