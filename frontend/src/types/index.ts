@@ -204,3 +204,62 @@ export interface ParametricSimulationStage {
   timestamp?: string;
 }
 
+// --- Groq AI Agent Interfaces ---
+
+export interface RestPointAIIntent {
+  facility_categories: string[];
+  purpose: string;
+  max_distance_km: number;
+  duration_minutes?: number | null;
+  availability_required: boolean;
+}
+
+export interface RestPointAIResponse {
+  query: string;
+  intent: RestPointAIIntent;
+  explanation: string;
+  facilities: Facility[];
+  partial_alternatives: Facility[];
+  is_fallback: boolean;
+  source: string;
+  total_found: number;
+}
+
+export interface RakshitArthaAIResponse {
+  weather: {
+    temperature: number;
+    wind_speed: number;
+    precipitation: number;
+    precipitation_prob: number;
+    condition_text: string;
+    last_updated: string;
+  };
+  disruption_rule: {
+    condition_type: string;
+    severity: string;
+    threshold_met: boolean;
+    status_label: string;
+    rule_description: string;
+    data_source: string;
+  };
+  income_calculation: {
+    daily_income_input: number;
+    working_hours_input: number;
+    downtime_hours_input: number;
+    affected_days_input: number;
+    calculated_hourly_rate: number;
+    direct_lost_earnings: number;
+    fixed_operating_loss: number;
+    total_estimated_impact: number;
+    calculation_nature: string;
+    is_guaranteed_payout: boolean;
+  };
+  explanation: string;
+  nearby_support_facilities: Facility[];
+  is_fallback: boolean;
+  source: string;
+  disclaimer: string;
+  demo_badges: Record<string, string>;
+}
+
+

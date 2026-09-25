@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from .database import engine, Base, SessionLocal
 from .seed_data import seed_database
 from .routers import (
-    auth, facilities, recommendations, routes, reports, breaks, support, admin
+    auth, facilities, recommendations, routes, reports, breaks, support, admin, ai_agent
 )
 
 # Initialize database schema
@@ -42,6 +42,7 @@ app.include_router(reports.router)
 app.include_router(breaks.router)
 app.include_router(support.router)
 app.include_router(admin.router)
+app.include_router(ai_agent.router)
 
 @app.get("/api/status")
 def get_status():

@@ -303,3 +303,50 @@ class AdminOverviewResponse(BaseModel):
     total_break_sessions: int
     total_users: int
     service_gaps: List[Dict[str, Any]]
+
+
+# --- Groq AI Agent Schemas ---
+
+class RestPointAIRequest(BaseModel):
+    query: str = Field(..., min_length=2, max_length=500)
+    lat: float = Field(default=11.0267, ge=-90.0, le=90.0)
+    lng: float = Field(default=77.0118, ge=-180.0, le=180.0)
+    max_distance_km: float = Field(default=5.0, ge=0.5, le=25.0)
+
+class RestPointAIIntent(BaseModel):
+    facility_categories: List[str] = []
+    purpose: str = "rest"
+    max_distance_km: float = 5.0
+    duration_minutes: Optional[int] = None
+    availability_required: bool = True
+
+class RestPointAIResponse(BaseModel):
+    query: str
+    intent: RestPointAIIntent
+    explanation: str
+    facilities: List[FacilitySchema]
+    partial_alternatives: List[FacilitySchema] = []
+    is_fallback: bool = False
+    source: str = "groq"
+    total_found: int = 0
+
+class RakshitArthaAIRequest(BaseModel):
+    lat: float = Field(default=11.0267, ge=-90.0, le=90.0)
+    lng: float = Field(default=77.0118, ge=-180.0, le=180.0)
+    daily_income: float = Field(default=800.0, gt=0)
+    working_hours: float = Field(default=8.0, gt=0, le=24.0)
+    downtime_hours: float = Field(default=3.0, ge=0, le=24.0)
+    affected_days: float = Field(default=1.0, ge=1.0, le=30.0)
+    client_weather: Optional[Dict[str, Any]] = None
+
+class RakshitArthaAIResponse(BaseModel):
+    weather: Dict[str, Any]
+    disruption_rule: Dict[str, Any]
+    income_calculation: Dict[str, Any]
+    explanation: str
+    nearby_support_facilities: List[FacilitySchema]
+    is_fallback: bool = False
+    source: str = "groq"
+    disclaimer: str
+    demo_badges: Dict[str, str]
+
