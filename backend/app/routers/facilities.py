@@ -2,12 +2,35 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..schemas import FacilitySchema, FacilityCreate, FacilityUpdate, VerificationCreate
+from ..schemas import FacilitySchema, FacilityCreate, FacilityUpdate, VerificationCreate, AdaptiveSearchResponse
 from ..services.facility_service import FacilityService
 from ..auth import get_current_user, get_current_user_optional, require_admin
 from ..models import User
 
 router = APIRouter(prefix="/api/facilities", tags=["Facilities"])
+
+@router.get("/nearby", response_model=AdaptiveSearchResponse)
+def get_nearby_facilities(
+    lat: float = Query(11.0267),
+    lng: float = Query(77.0118),
+    category: Optional[str] = Query(None),
+    service: Optional[str] = Query(None),
+    access_type: Optional[str] = Query(None),
+    initialRadius: int = Query(5),
+    step: int = Query(1),
+    minResults: int = Query(5),
+    maxRadius: int = Query(20),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    uid = current_user.id if current_user else None
+    return FacilityService.get_adaptive_facilities(
+        db, lat=lat, lng=lng, category=category,
+        service_filter=service, access_type=access_type,
+        initial_radius_km=initialRadius, step_km=step,
+        min_results=minResults, max_radius_km=maxRadius,
+        current_user_id=uid
+    )
 
 @router.get("", response_model=List[FacilitySchema])
 def get_facilities(
@@ -17,6 +40,7 @@ def get_facilities(
     service: Optional[str] = Query(None),
     access_type: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
+    max_distance_meters: Optional[int] = Query(None),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
@@ -24,7 +48,7 @@ def get_facilities(
     return FacilityService.get_facilities(
         db, lat=lat, lng=lng, category=category,
         service_filter=service, access_type=access_type,
-        search_query=q, current_user_id=uid
+        search_query=q, max_distance_meters=max_distance_meters, current_user_id=uid
     )
 
 @router.get("/{facility_id}", response_model=FacilitySchema)

@@ -56,7 +56,7 @@ export const authApi = {
 };
 
 export const facilityApi = {
-  getFacilities: (params?: { category?: string; service?: string; access_type?: string; q?: string; lat?: number; lng?: number }) => {
+  getFacilities: (params?: { category?: string; service?: string; access_type?: string; q?: string; lat?: number; lng?: number; max_distance_meters?: number }) => {
     const qp = new URLSearchParams();
     if (params?.category) qp.append('category', params.category);
     if (params?.service) qp.append('service', params.service);
@@ -64,8 +64,22 @@ export const facilityApi = {
     if (params?.q) qp.append('q', params.q);
     if (params?.lat) qp.append('lat', params.lat.toString());
     if (params?.lng) qp.append('lng', params.lng.toString());
+    if (params?.max_distance_meters) qp.append('max_distance_meters', params.max_distance_meters.toString());
     const qs = qp.toString() ? `?${qp.toString()}` : '';
     return request<Facility[]>(`/api/facilities${qs}`);
+  },
+  getNearbyFacilities: (params: { lat: number; lng: number; category?: string; service?: string; initialRadius?: number; step?: number; minResults?: number; maxRadius?: number }) => {
+    const qp = new URLSearchParams();
+    qp.append('lat', params.lat.toString());
+    qp.append('lng', params.lng.toString());
+    if (params.category) qp.append('category', params.category);
+    if (params.service) qp.append('service', params.service);
+    if (params.initialRadius) qp.append('initialRadius', params.initialRadius.toString());
+    if (params.step) qp.append('step', params.step.toString());
+    if (params.minResults) qp.append('minResults', params.minResults.toString());
+    if (params.maxRadius) qp.append('maxRadius', params.maxRadius.toString());
+    
+    return request<{ facilities: Facility[]; searchRadiusKm: number; expanded: boolean; message: string }>(`/api/facilities/nearby?${qp.toString()}`);
   },
   getFacility: (id: number, lat = 11.0267, lng = 77.0118) => 
     request<Facility>(`/api/facilities/${id}?lat=${lat}&lng=${lng}`),

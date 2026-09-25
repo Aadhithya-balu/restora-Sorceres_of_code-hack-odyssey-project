@@ -193,27 +193,33 @@ export const FacilityCard: React.FC<FacilityCardProps> = ({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 8,
         borderTop: '1px solid var(--border)',
-        paddingTop: 10,
+        paddingTop: 12,
         marginTop: 6
       }}>
         <button
-          onClick={() => onSelect(facility)}
-          className="btn btn-primary btn-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(facility);
+          }}
+          className="btn btn-secondary btn-sm"
+          style={{ flex: 1 }}
         >
-          View Details & Status
+          View Details
         </button>
 
-        {onReportClick && (
-          <button
-            onClick={() => onReportClick(facility)}
-            className="btn btn-secondary btn-sm"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Report Issue
-          </button>
-        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${facility.lat},${facility.lng}`, '_blank');
+          }}
+          className="btn btn-primary btn-sm"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          <Navigation size={14} />
+          Navigate
+        </button>
       </div>
     </div>
   );
