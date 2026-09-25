@@ -75,5 +75,5 @@ export function useLocation() {
     };
   }, [isTracking]);
 
-  return { location, isTracking, setIsTracking };
+  return { location, isTracking, setIsTracking, permissionGranted: location.permissionGranted };
 }
