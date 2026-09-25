@@ -9,6 +9,7 @@
     "dev:backend": "python run_dev.py",
     "dev:frontend": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
+    "check:db": "python check_db.py",
     "test": "python -m pytest backend/tests/test_api.py -v",
     "verify": "python verify_fullstack.py"
   },
