@@ -66,12 +66,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
               </button>
 
               {!isAuthenticated && (
-                <button 
-                  onClick={() => openAuthModal('login')}
-                  className="btn btn-secondary btn-lg"
-                >
-                  <span>Worker Sign In</span>
-                </button>
+                <>
+                  <button 
+                    onClick={() => onNavigate('login')}
+                    className="btn btn-secondary btn-lg"
+                  >
+                    <span>Worker Sign In</span>
+                  </button>
+                  <button 
+                    onClick={() => onNavigate('signup')}
+                    className="btn btn-primary btn-lg"
+                  >
+                    <span>Register Free</span>
+                  </button>
+                </>
               )}
             </div>
 
@@ -230,6 +238,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#D97706', fontWeight: 600, fontSize: 13 }}>
               Break Planner <ArrowRight size={14} />
+            </div>
+          </div>
+
+          <div className="card card-hover" onClick={() => onNavigate('rakshitartha')} style={{ cursor: 'pointer' }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              backgroundColor: '#CCFBF1',
+              color: '#0F766E',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14
+            }}>
+              <Shield size={24} />
+            </div>
+            <h3 style={{ fontSize: 18, marginBottom: 8 }}>RakshitArtha Disruption Support</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 12 }}>
+              Live rainfall & heat disruption telemetry, downtime income impact estimates, and 5-stage parametric claim simulator.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0F766E', fontWeight: 600, fontSize: 13 }}>
+              Explore RakshitArtha <ArrowRight size={14} />
             </div>
           </div>
 

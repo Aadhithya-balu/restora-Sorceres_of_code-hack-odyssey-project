@@ -124,10 +124,9 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
 
   const handleVerify = async () => {
     if (!isAuthenticated) {
-      setGuestNotice('Verifying rest facilities requires a verified worker account to maintain community accuracy.');
+      openAuthModal('login');
       return;
     }
-
     try {
       setVerifying(true);
       const res = await facilityApi.verifyFacility({
@@ -441,18 +440,14 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
               Community Reports ({reports.length})
             </h4>
             <button
-              onClick={handleReportAction}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--primary)',
-                fontWeight: 600,
-                fontSize: 12,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
+              onClick={() => {
+                if (!isAuthenticated) {
+                  openAuthModal('login');
+                  return;
+                }
+                onOpenReport(facility);
               }}
+              className="btn btn-secondary btn-sm"
             >
               <AlertCircle size={14} /> Report an Issue
             </button>
@@ -528,10 +523,11 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
             <button
               onClick={() => {
                 if (!isAuthenticated) {
-                  setGuestNotice('Bookmarks require signing in to save your personal favorite rest stops.');
+                  openAuthModal('login');
                   return;
                 }
-                onBookmarkToggle(facility.id);
+                onStartBreakHere(facility);
+                onClose();
               }}
               className="btn btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}

@@ -73,6 +73,12 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
                 ☕ Voluntary Break Planner & Impact
               </button>
               <button 
+                onClick={() => setActiveTab('rakshitartha')}
+                style={{ background: 'none', border: 'none', color: '#94A3B8', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+              >
+                🛡️ RakshitArtha Disruption Support
+              </button>
+              <button 
                 onClick={() => setActiveTab('support')}
                 style={{ background: 'none', border: 'none', color: '#94A3B8', textAlign: 'left', cursor: 'pointer', padding: 0 }}
               >

@@ -1,7 +1,8 @@
 import { 
   User, Facility, FacilityReport, BreakSession, 
   SupportResource, PartnerOffer, RecommendationResult, 
-  RoutePlanResponse, IncomeImpactEstimate, AdminOverview 
+  RoutePlanResponse, IncomeImpactEstimate, AdminOverview,
+  UserRegisterData
 } from '../types';
 
 const API_BASE = (typeof window !== 'undefined' && window.location.port === '5173') 
@@ -40,7 +41,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const authApi = {
-  register: (data: any) => request<{ access_token: string; user: User }>('/api/auth/register', {
+  register: (data: UserRegisterData) => request<{ access_token: string; user: User }>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
