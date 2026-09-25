@@ -15,7 +15,7 @@ export interface LocalityResult {
   city?: string;
 }
 
-// Key delivery and transport corridors in Tamil Nadu
+// Key delivery and transport corridors in Tamil Nadu & South India
 export const PRESET_CORRIDORS: LocalityResult[] = [
   // Coimbatore Delivery Corridors
   {
@@ -90,6 +90,42 @@ export const PRESET_CORRIDORS: LocalityResult[] = [
     zone: 'Peelamedu',
     city: 'Coimbatore'
   },
+  {
+    displayName: 'CODISSIA Trade Fair Complex, Coimbatore',
+    shortName: 'CODISSIA, Coimbatore',
+    lat: 11.0381,
+    lng: 77.0298,
+    type: 'local_preset',
+    zone: 'Peelamedu',
+    city: 'Coimbatore'
+  },
+  {
+    displayName: 'Town Hall Commercial Market, Coimbatore',
+    shortName: 'Town Hall, Coimbatore',
+    lat: 10.9950,
+    lng: 76.9610,
+    type: 'local_preset',
+    zone: 'Town Hall',
+    city: 'Coimbatore'
+  },
+  {
+    displayName: 'Ukkadam Bus Stand & Lake Corridor, Coimbatore',
+    shortName: 'Ukkadam, Coimbatore',
+    lat: 10.9880,
+    lng: 76.9615,
+    type: 'local_preset',
+    zone: 'Ukkadam',
+    city: 'Coimbatore'
+  },
+  {
+    displayName: 'Saibaba Colony, Coimbatore',
+    shortName: 'Saibaba Colony, Coimbatore',
+    lat: 11.0275,
+    lng: 76.9460,
+    type: 'local_preset',
+    zone: 'Saibaba Colony',
+    city: 'Coimbatore'
+  },
 
   // Chennai Hubs
   {
@@ -128,8 +164,35 @@ export const PRESET_CORRIDORS: LocalityResult[] = [
     zone: 'Guindy',
     city: 'Chennai'
   },
+  {
+    displayName: 'Velachery Bypass & MRTS Corridor, Chennai',
+    shortName: 'Velachery, Chennai',
+    lat: 12.9782,
+    lng: 80.2224,
+    type: 'local_preset',
+    zone: 'Velachery',
+    city: 'Chennai'
+  },
+  {
+    displayName: 'Chennai Central Railway Station',
+    shortName: 'Chennai Central',
+    lat: 13.0827,
+    lng: 80.2757,
+    type: 'local_preset',
+    zone: 'Park Town',
+    city: 'Chennai'
+  },
 
-  // Madurai & Salem
+  // Other Major Tamil Nadu Hubs & Towns
+  {
+    displayName: 'Srivilliputhur, Virudhunagar, Tamil Nadu',
+    shortName: 'Srivilliputhur',
+    lat: 9.5601,
+    lng: 77.6091,
+    type: 'local_preset',
+    zone: 'Srivilliputhur',
+    city: 'Virudhunagar'
+  },
   {
     displayName: 'Mattuthavani Integrated Bus Stand, Madurai',
     shortName: 'Mattuthavani, Madurai',
@@ -140,6 +203,15 @@ export const PRESET_CORRIDORS: LocalityResult[] = [
     city: 'Madurai'
   },
   {
+    displayName: 'Periyar Bus Stand & Railway Junction, Madurai',
+    shortName: 'Periyar, Madurai',
+    lat: 9.9172,
+    lng: 78.1130,
+    type: 'local_preset',
+    zone: 'Central',
+    city: 'Madurai'
+  },
+  {
     displayName: 'New Bus Stand Meyyanur, Salem',
     shortName: 'New Bus Stand, Salem',
     lat: 11.6683,
@@ -147,46 +219,88 @@ export const PRESET_CORRIDORS: LocalityResult[] = [
     type: 'local_preset',
     zone: 'Meyyanur',
     city: 'Salem'
+  },
+  {
+    displayName: 'Central Bus Stand & Railway Station, Tiruchirappalli',
+    shortName: 'Central Bus Stand, Trichy',
+    lat: 10.7937,
+    lng: 78.6865,
+    type: 'local_preset',
+    zone: 'Cantonment',
+    city: 'Tiruchirappalli'
+  },
+  {
+    displayName: 'Tiruppur Old & New Bus Stand Corridor, Tiruppur',
+    shortName: 'Tiruppur Central',
+    lat: 11.1085,
+    lng: 77.3411,
+    type: 'local_preset',
+    zone: 'Central',
+    city: 'Tiruppur'
+  },
+  {
+    displayName: 'Erode Central Bus Terminus, Erode',
+    shortName: 'Erode Bus Stand',
+    lat: 11.3410,
+    lng: 77.7172,
+    type: 'local_preset',
+    zone: 'Central',
+    city: 'Erode'
+  },
+  {
+    displayName: 'Dindigul City Bus Stand, Dindigul',
+    shortName: 'Dindigul Central',
+    lat: 10.3673,
+    lng: 77.9803,
+    type: 'local_preset',
+    zone: 'Central',
+    city: 'Dindigul'
+  },
+  {
+    displayName: 'Tirunelveli Junction & New Bus Stand',
+    shortName: 'Tirunelveli Junction',
+    lat: 8.7139,
+    lng: 77.7567,
+    type: 'local_preset',
+    zone: 'Junction',
+    city: 'Tirunelveli'
   }
 ];
 
-let lastSearchTime = 0;
-
-export async function searchLocalities(query: string): Promise<LocalityResult[]> {
+export async function searchLocalities(
+  query: string,
+  signal?: AbortSignal
+): Promise<LocalityResult[]> {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed || trimmed.length < 2) {
     return [];
   }
 
-  // 1. Instant local preset matching
-  const presetMatches = PRESET_CORRIDORS.filter(p => 
-    p.displayName.toLowerCase().includes(trimmed) ||
-    p.shortName.toLowerCase().includes(trimmed) ||
-    (p.zone && p.zone.toLowerCase().includes(trimmed)) ||
-    (p.city && p.city.toLowerCase().includes(trimmed))
-  );
+  // 1. Instant local preset matching (supports partial and tokenized match)
+  const queryTokens = trimmed.split(/[\s,]+/).filter(Boolean);
+  const presetMatches = PRESET_CORRIDORS.filter(p => {
+    const target = `${p.displayName} ${p.shortName} ${p.zone || ''} ${p.city || ''}`.toLowerCase();
+    // Either exact substring or all query tokens present
+    if (target.includes(trimmed)) return true;
+    return queryTokens.every(token => target.includes(token));
+  });
 
-  // If we have strong local preset matches, return them immediately
-  if (presetMatches.length >= 3) {
-    return presetMatches.slice(0, 5);
+  // If query is very short or we have 4+ exact preset matches, return them directly
+  if (trimmed.length < 3 || presetMatches.length >= 4) {
+    return presetMatches.slice(0, 6);
   }
 
-  // 2. OpenStreetMap Nominatim Search (debounced 500ms to respect rate limits)
-  const now = Date.now();
-  if (now - lastSearchTime < 400) {
-    return presetMatches;
-  }
-  lastSearchTime = now;
-
+  // 2. OpenStreetMap Nominatim Search (with AbortSignal support)
   try {
     const encoded = encodeURIComponent(`${query}, India`);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=in&limit=4&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=in&limit=5&addressdetails=1`,
       {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'RestoraGigWorkerNetwork/1.0'
-        }
+        },
+        signal
       }
     );
 
@@ -202,17 +316,21 @@ export async function searchLocalities(query: string): Promise<LocalityResult[]>
         zone: item.address?.suburb || item.address?.neighbourhood
       }));
 
-      // Combine unique results
+      // Combine unique results: presets first, then OSM
       const combined = [...presetMatches];
       for (const r of osmResults) {
         if (!combined.some(c => Math.abs(c.lat - r.lat) < 0.005 && Math.abs(c.lng - r.lng) < 0.005)) {
           combined.push(r);
         }
       }
-      return combined.slice(0, 6);
+      return combined.slice(0, 7);
     }
-  } catch (err) {
-    console.warn('[GeocodeService] Nominatim fallback failed or offline:', err);
+  } catch (err: any) {
+    // If request was aborted by newer search, silently return empty
+    if (err.name === 'AbortError') {
+      return [];
+    }
+    // Network or rate-limit fallback: return preset matches
   }
 
   return presetMatches;

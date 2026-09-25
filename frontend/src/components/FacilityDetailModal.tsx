@@ -526,8 +526,7 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
                   openAuthModal('login');
                   return;
                 }
-                onStartBreakHere(facility);
-                onClose();
+                onBookmarkToggle(facility.id);
               }}
               className="btn btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
