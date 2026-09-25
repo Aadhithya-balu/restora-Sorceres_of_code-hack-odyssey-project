@@ -9,6 +9,7 @@ export const AuthModal: React.FC = () => {
   const [isRegister, setIsRegister] = useState(authModalMode === 'register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [workerCategory, setWorkerCategory] = useState<WorkerCategory>('delivery_rider');
@@ -30,6 +31,18 @@ export const AuthModal: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (isRegister) {
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters long');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match. Please verify your password confirmation.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -215,17 +228,28 @@ export const AuthModal: React.FC = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Est. Hourly Rate (₹/hr)</label>
+                  <label className="form-label">Phone Number (Optional)</label>
                   <input
-                    type="number"
-                    min="50"
-                    max="500"
+                    type="tel"
                     className="form-input"
-                    placeholder="120"
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(Number(e.target.value))}
+                    placeholder="+91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Est. Hourly Rate (₹/hr)</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="500"
+                  className="form-input"
+                  placeholder="120"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(Number(e.target.value))}
+                />
               </div>
             </>
           )}
@@ -243,7 +267,7 @@ export const AuthModal: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Password *</label>
+            <label className="form-label">Password * (Min 6 chars)</label>
             <input
               type="password"
               required
@@ -254,6 +278,21 @@ export const AuthModal: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+
+          {isRegister && (
+            <div className="form-group">
+              <label className="form-label">Confirm Password *</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                className="form-input"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          )}
 
           <button
             type="submit"

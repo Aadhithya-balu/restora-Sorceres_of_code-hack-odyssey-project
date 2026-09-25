@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Facility, FacilityReport } from '../types';
 import { facilityApi, reportApi, breakApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface FacilityDetailModalProps {
   facility: Facility | null;
@@ -26,6 +27,7 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
   onStartBreakHere,
   onFacilityUpdated
 }) => {
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [reports, setReports] = useState<FacilityReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -53,6 +55,10 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
   if (!isOpen || !facility) return null;
 
   const handleVerify = async () => {
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
     try {
       setVerifying(true);
       const res = await facilityApi.verifyFacility({
@@ -301,7 +307,13 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <h4 style={{ fontSize: 14 }}>Recent Community Reports ({reports.length})</h4>
             <button
-              onClick={() => onOpenReport(facility)}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  openAuthModal('login');
+                  return;
+                }
+                onOpenReport(facility);
+              }}
               className="btn btn-secondary btn-sm"
             >
               <AlertTriangle size={13} color="var(--warning)" /> Report An Issue
@@ -357,6 +369,10 @@ export const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({
           {onStartBreakHere ? (
             <button
               onClick={() => {
+                if (!isAuthenticated) {
+                  openAuthModal('login');
+                  return;
+                }
                 onStartBreakHere(facility);
                 onClose();
               }}

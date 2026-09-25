@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, UserRegisterData } from '../types';
 import { authApi } from '../services/api';
 
 interface AuthContextType {
@@ -7,8 +7,9 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isRestoringSession: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  register: (data: UserRegisterData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isAuthModalOpen: boolean;
@@ -21,7 +22,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('restora_token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('restora_token'));
+  const [isRestoringSession, setIsRestoringSession] = useState<boolean>(() => !!localStorage.getItem('restora_token'));
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -33,21 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('restora_token');
       setToken(null);
       setUser(null);
+    } finally {
+      setIsRestoringSession(false);
     }
   };
 
   useEffect(() => {
-    if (token) {
+    const savedToken = localStorage.getItem('restora_token');
+    if (savedToken) {
       refreshUser();
     } else {
-      // Auto login as default worker Aadhi for seamless first experience if no token exists
-      authApi.login({ email: 'aadhi@restora.app', password: 'Worker@123' })
-        .then((res) => {
-          localStorage.setItem('restora_token', res.access_token);
-          setToken(res.access_token);
-          setUser(res.user);
-        })
-        .catch(() => {});
+      // True guest experience: starts unauthenticated without auto-login
+      setIsRestoringSession(false);
     }
   }, []);
 
@@ -59,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthModalOpen(false);
   };
 
-  const register = async (data: any) => {
+  const register = async (data: UserRegisterData) => {
     const res = await authApi.register(data);
     localStorage.setItem('restora_token', res.access_token);
     setToken(res.access_token);
@@ -89,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
+        isRestoringSession,
         login,
         register,
         logout,

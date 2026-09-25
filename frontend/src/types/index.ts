@@ -148,3 +148,59 @@ export interface AdminOverview {
     severity: 'HIGH' | 'MODERATE' | 'BALANCED';
   }[];
 }
+
+export interface UserRegisterData {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  worker_category: WorkerCategory;
+  preferred_language: string;
+  work_area: string;
+  hourly_rate_estimate?: number;
+}
+
+export interface EnvironmentalDisruption {
+  zone: string;
+  temperature: number;
+  feelsLike: number;
+  rainProbability: number;
+  rainfallRate: string;
+  windSpeed: number;
+  weatherCondition: string;
+  safetyAlert?: string;
+  isExtreme: boolean;
+  lastUpdated: string;
+}
+
+export interface ProtectionTier {
+  id: string;
+  name: string;
+  tagline: string;
+  weeklyMicroContribution: number;
+  coverageCap: number;
+  disruptionTriggers: string[];
+  features: string[];
+  recommendedCategory: WorkerCategory[];
+  isPopular?: boolean;
+}
+
+export interface DisruptionScenario {
+  id: string;
+  title: string;
+  category: 'RAIN' | 'HEAT' | 'WIND' | 'FLOOD';
+  triggerThreshold: string;
+  severityLevel: 'LOW' | 'MODERATE' | 'SEVERE';
+  estimatedDowntimeHours: number;
+  impactExplanation: string;
+  recommendedAction: string;
+}
+
+export interface ParametricSimulationStage {
+  step: number;
+  title: string;
+  detail: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED';
+  timestamp?: string;
+}
+

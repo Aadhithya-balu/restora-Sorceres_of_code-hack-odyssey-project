@@ -90,6 +90,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </button>
 
           <button 
+            className={`nav-link ${activeTab === 'rakshitartha' ? 'active' : ''}`}
+            onClick={() => handleNavClick('rakshitartha')}
+            style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+          >
+            <Shield size={16} color="var(--primary)" />
+            RakshitArtha
+          </button>
+
+          <button 
             className={`nav-link ${activeTab === 'support' ? 'active' : ''}`}
             onClick={() => handleNavClick('support')}
             style={{ border: 'none', background: 'none', cursor: 'pointer' }}
@@ -135,13 +144,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               </button>
             </div>
           ) : (
-            <button 
-              onClick={() => openAuthModal('login')}
-              className="btn btn-primary btn-sm"
-            >
-              <LogIn size={14} />
-              Worker Sign In
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button 
+                onClick={() => handleNavClick('login')}
+                className="btn btn-outline btn-sm"
+              >
+                <LogIn size={14} />
+                Sign In
+              </button>
+              <button 
+                onClick={() => handleNavClick('signup')}
+                className="btn btn-primary btn-sm"
+              >
+                Sign Up
+              </button>
+            </div>
           )}
 
           {/* Mobile hamburger button */}
@@ -190,6 +207,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <Coffee size={16} /> Breaks & Income
           </button>
           <button 
+            className={`nav-link ${activeTab === 'rakshitartha' ? 'active' : ''}`}
+            onClick={() => handleNavClick('rakshitartha')}
+          >
+            <Shield size={16} color="var(--primary)" /> RakshitArtha Support
+          </button>
+          <button 
             className={`nav-link ${activeTab === 'support' ? 'active' : ''}`}
             onClick={() => handleNavClick('support')}
           >
@@ -203,6 +226,45 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               <Shield size={16} /> Admin Management
             </button>
           )}
+
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', gap: 8 }}>
+            {!isAuthenticated ? (
+              <>
+                <button 
+                  onClick={() => handleNavClick('login')} 
+                  className="btn btn-outline btn-sm" 
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  <LogIn size={14} /> Sign In
+                </button>
+                <button 
+                  onClick={() => handleNavClick('signup')} 
+                  className="btn btn-primary btn-sm" 
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  Sign Up
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => handleNavClick('profile')} 
+                  className="btn btn-secondary btn-sm" 
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  <UserIcon size={14} /> Profile
+                </button>
+                <button 
+                  onClick={logout} 
+                  className="btn btn-secondary btn-sm" 
+                  style={{ justifyContent: 'center' }}
+                  title="Log Out"
+                >
+                  <LogOut size={14} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </header>
