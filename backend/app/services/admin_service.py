@@ -7,6 +7,7 @@ class AdminService:
     def get_overview_stats(db: Session) -> Dict[str, Any]:
         total_facilities = db.query(Facility).count()
         verified_facilities = db.query(Facility).filter(Facility.verification_status == "VERIFIED").count()
+        pending_submissions = db.query(Facility).filter(Facility.verification_status == "PENDING").count()
         total_reports = db.query(FacilityReport).count()
         pending_reports = db.query(FacilityReport).filter(FacilityReport.status == "PENDING").count()
         total_breaks = db.query(BreakSession).count()
@@ -47,6 +48,7 @@ class AdminService:
         return {
             "total_facilities": total_facilities,
             "verified_facilities": verified_facilities,
+            "pending_submissions": pending_submissions,
             "total_reports": total_reports,
             "pending_reports": pending_reports,
             "total_break_sessions": total_breaks,

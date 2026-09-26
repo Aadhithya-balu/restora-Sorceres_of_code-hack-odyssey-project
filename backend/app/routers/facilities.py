@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..schemas import FacilitySchema, FacilityCreate, FacilityUpdate, VerificationCreate, AdaptiveSearchResponse
+from ..schemas import (
+    FacilitySchema, FacilityCreate, FacilityUpdate, VerificationCreate, 
+    AdaptiveSearchResponse, ReviewCreate, ReviewSchema
+)
 from ..services.facility_service import FacilityService
 from ..auth import get_current_user, get_current_user_optional, require_admin
 from ..models import User
@@ -32,6 +35,13 @@ def get_nearby_facilities(
         current_user_id=uid
     )
 
+@router.get("/pending", response_model=List[FacilitySchema])
+def get_pending_facilities(
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    return FacilityService.get_pending_facilities(db)
+
 @router.get("", response_model=List[FacilitySchema])
 def get_facilities(
     lat: float = Query(11.0267),
@@ -41,6 +51,9 @@ def get_facilities(
     access_type: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     max_distance_meters: Optional[int] = Query(None),
+    is_24_7: Optional[bool] = Query(None),
+    open_now: Optional[bool] = Query(None),
+    status: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
@@ -48,7 +61,9 @@ def get_facilities(
     return FacilityService.get_facilities(
         db, lat=lat, lng=lng, category=category,
         service_filter=service, access_type=access_type,
-        search_query=q, max_distance_meters=max_distance_meters, current_user_id=uid
+        search_query=q, max_distance_meters=max_distance_meters,
+        is_24_7_filter=is_24_7, open_now_filter=open_now,
+        status_filter=status, current_user_id=uid
     )
 
 @router.get("/{facility_id}", response_model=FacilitySchema)
@@ -108,6 +123,50 @@ def verify_facility(
         return FacilityService.verify_facility(db, data, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+@router.post("/{facility_id}/reviews", response_model=ReviewSchema, status_code=status.HTTP_201_CREATED)
+def create_facility_review(
+    facility_id: int,
+    data: ReviewCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return FacilityService.create_review(
+            db, facility_id=facility_id, data=data,
+            user_id=current_user.id, user_name=current_user.name
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/{facility_id}/reviews", response_model=List[ReviewSchema])
+def get_facility_reviews(
+    facility_id: int,
+    db: Session = Depends(get_db)
+):
+    return FacilityService.get_reviews(db, facility_id=facility_id)
+
+@router.patch("/{facility_id}/approve", response_model=FacilitySchema)
+def approve_facility(
+    facility_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    fac = FacilityService.approve_facility(db, facility_id)
+    if not fac:
+        raise HTTPException(status_code=404, detail="Facility not found")
+    return FacilityService.get_facility_by_id(db, facility_id, current_user_id=current_user.id)
+
+@router.patch("/{facility_id}/reject", response_model=FacilitySchema)
+def reject_facility(
+    facility_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    fac = FacilityService.reject_facility(db, facility_id)
+    if not fac:
+        raise HTTPException(status_code=404, detail="Facility not found")
+    return FacilityService.get_facility_by_id(db, facility_id, current_user_id=current_user.id)
 
 from pydantic import BaseModel
 

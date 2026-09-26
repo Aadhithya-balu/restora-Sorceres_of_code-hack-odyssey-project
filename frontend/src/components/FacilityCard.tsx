@@ -12,12 +12,16 @@ interface FacilityCardProps {
   highlightReason?: string;
   userLat?: number | null;
   userLng?: number | null;
+  isSelected?: boolean;
+  onOpenDetails?: (facility: Facility) => void;
 }
 
 export const FacilityCard: React.FC<FacilityCardProps> = ({
   facility,
   onSelect,
-  onBookmarkToggle
+  onBookmarkToggle,
+  isSelected = false,
+  onOpenDetails
 }) => {
   const formatDistance = (meters?: number) => {
     if (meters === undefined || meters === null) return null;
@@ -137,7 +141,7 @@ export const FacilityCard: React.FC<FacilityCardProps> = ({
 
   return (
     <div 
-      className="card card-hover" 
+      className={`card card-hover ${isSelected ? 'facility-card-selected' : ''}`}
       onClick={() => onSelect(facility)}
       style={{ 
         display: 'flex', 
@@ -146,12 +150,33 @@ export const FacilityCard: React.FC<FacilityCardProps> = ({
         cursor: 'pointer',
         padding: '14px 16px',
         borderRadius: 14,
-        border: '1px solid var(--border)'
+        border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+        boxShadow: isSelected ? '0 6px 20px rgba(13, 148, 136, 0.22)' : 'var(--shadow-sm)',
+        backgroundColor: isSelected ? 'rgba(240, 253, 250, 0.7)' : 'var(--surface)',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: isSelected ? 'translateY(-2px)' : 'none',
+        position: 'relative'
       }}
     >
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
+          {isSelected && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: '#0D9488',
+              color: '#FFFFFF',
+              fontSize: 10,
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: 8,
+              marginBottom: 6
+            }}>
+              <span>✓ Selected (Click to deselect)</span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
             <span style={{ 
               fontSize: 11, 
@@ -266,13 +291,28 @@ export const FacilityCard: React.FC<FacilityCardProps> = ({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        paddingTop: 6, 
-        borderTop: '1px solid var(--border-subtle)',
+        paddingTop: 8, 
+        borderTop: '1px solid var(--border-subtle, #f1f5f9)',
         fontSize: 11,
         color: 'var(--text-muted)'
       }}>
-        <span>🕒 {facility.operating_hours || 'Hours not listed'}</span>
-        <span>{getRelativeReportedTime(facility.last_reported_at)}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span>🕒 {facility.operating_hours || 'Hours not listed'}</span>
+          <span>{getRelativeReportedTime(facility.last_reported_at)}</span>
+        </div>
+        {onOpenDetails && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails(facility);
+            }}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 8, fontWeight: 600 }}
+          >
+            Full Details ↗
+          </button>
+        )}
       </div>
     </div>
   );

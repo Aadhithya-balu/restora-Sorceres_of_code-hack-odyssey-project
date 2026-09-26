@@ -1,5 +1,5 @@
 import { 
-  User, Facility, FacilityReport, BreakSession, 
+  User, Facility, FacilityReport, FacilityReview, BreakSession, 
   SupportResource, PartnerOffer, RecommendationResult, 
   RoutePlanResponse, IncomeImpactEstimate, AdminOverview,
   UserRegisterData, RestPointAIResponse, RakshitArthaAIResponse
@@ -57,7 +57,18 @@ export const authApi = {
 };
 
 export const facilityApi = {
-  getFacilities: (params?: { category?: string; service?: string; access_type?: string; q?: string; lat?: number; lng?: number; max_distance_meters?: number }) => {
+  getFacilities: (params?: { 
+    category?: string; 
+    service?: string; 
+    access_type?: string; 
+    q?: string; 
+    lat?: number; 
+    lng?: number; 
+    max_distance_meters?: number;
+    is_24_7?: boolean;
+    open_now?: boolean;
+    status?: string;
+  }) => {
     const qp = new URLSearchParams();
     if (params?.category) qp.append('category', params.category);
     if (params?.service) qp.append('service', params.service);
@@ -66,6 +77,9 @@ export const facilityApi = {
     if (params?.lat) qp.append('lat', params.lat.toString());
     if (params?.lng) qp.append('lng', params.lng.toString());
     if (params?.max_distance_meters) qp.append('max_distance_meters', params.max_distance_meters.toString());
+    if (params?.is_24_7 !== undefined) qp.append('is_24_7', params.is_24_7.toString());
+    if (params?.open_now !== undefined) qp.append('open_now', params.open_now.toString());
+    if (params?.status) qp.append('status', params.status);
     const qs = qp.toString() ? `?${qp.toString()}` : '';
     return request<Facility[]>(`/api/facilities${qs}`);
   },
@@ -84,6 +98,7 @@ export const facilityApi = {
   },
   getFacility: (id: number, lat = 11.0267, lng = 77.0118) => 
     request<Facility>(`/api/facilities/${id}?lat=${lat}&lng=${lng}`),
+  getPendingFacilities: () => request<Facility[]>('/api/facilities/pending'),
   createFacility: (data: Partial<Facility>) => request<Facility>('/api/facilities', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -91,6 +106,12 @@ export const facilityApi = {
   updateFacility: (id: number, data: Partial<Facility>) => request<Facility>(`/api/facilities/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data)
+  }),
+  approveFacility: (id: number) => request<Facility>(`/api/facilities/${id}/approve`, {
+    method: 'PATCH'
+  }),
+  rejectFacility: (id: number) => request<Facility>(`/api/facilities/${id}/reject`, {
+    method: 'PATCH'
   }),
   deleteFacility: (id: number) => request<{ success: boolean }>(`/api/facilities/${id}`, {
     method: 'DELETE'
@@ -100,6 +121,12 @@ export const facilityApi = {
       method: 'POST',
       body: JSON.stringify(data)
     }),
+  createReview: (facilityId: number, data: { rating: number; cleanliness?: number; accessibility?: number; safety?: number; comment?: string }) => 
+    request<FacilityReview>(`/api/facilities/${facilityId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ facility_id: facilityId, ...data })
+    }),
+  getReviews: (facilityId: number) => request<FacilityReview[]>(`/api/facilities/${facilityId}/reviews`),
   seedDemoFacilities: (lat: number, lng: number, city = 'Current Location') => 
     request<{ success: boolean; message: string; count: number }>('/api/facilities/seed-demo', {
       method: 'POST',

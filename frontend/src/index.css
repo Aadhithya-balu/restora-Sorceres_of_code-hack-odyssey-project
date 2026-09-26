@@ -326,3 +326,206 @@ p {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Explore Map Layout Utilities */
+.explore-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 68vh;
+  min-height: 580px;
+  max-height: 800px;
+  background-color: #E2E8F0;
+  border-bottom: 1px solid var(--border);
+  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.explore-map-wrapper.map-tall {
+  height: 85vh;
+  min-height: 740px;
+  max-height: 960px;
+}
+
+@media (max-width: 768px) {
+  .explore-map-wrapper {
+    height: 62vh;
+    min-height: 460px;
+    max-height: 620px;
+  }
+
+  .explore-map-wrapper.map-tall {
+    height: 80vh;
+    min-height: 560px;
+    max-height: 780px;
+  }
+}
+
+/* Desktop Side-by-Side Split View (Google Maps / Airbnb style) */
+.explore-split-container {
+  display: flex;
+  width: 100%;
+  height: calc(100vh - 130px);
+  min-height: 640px;
+  overflow: hidden;
+  background-color: var(--bg-main);
+}
+
+.explore-split-sidebar {
+  width: 460px;
+  min-width: 380px;
+  max-width: 500px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 18px 48px;
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.explore-split-map {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #E2E8F0;
+}
+
+@media (max-width: 1023px) {
+  .explore-split-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+  .explore-split-sidebar {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    overflow-y: visible;
+    border-right: none;
+    order: 2;
+  }
+  .explore-split-map {
+    width: 100%;
+    height: 62vh;
+    min-height: 460px;
+    order: 1;
+  }
+}
+
+.hide-on-mobile {
+  display: inline-flex !important;
+}
+
+@media (max-width: 1023px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+.facility-card-selected {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.25) !important;
+  background-color: rgba(240, 253, 250, 0.75) !important;
+}
+
+/* Mobile Bottom Navigation Bar (5-tab navigation: HOME, EXPLORE, ADD, ACTIVITY, PROFILE) */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background-color: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 999;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Ensure main view doesn't get covered by fixed bottom navigation */
+  .page-container,
+  main {
+    padding-bottom: 76px;
+  }
+
+  .mobile-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    gap: 3px;
+    cursor: pointer;
+    padding: 6px 0;
+    transition: color 0.15s ease;
+    user-select: none;
+  }
+
+  .mobile-nav-item:hover,
+  .mobile-nav-item.active {
+    color: var(--primary);
+  }
+
+  .mobile-nav-item.active span {
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .mobile-nav-item-add {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    top: -8px;
+    padding: 0;
+  }
+
+  .mobile-add-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .mobile-add-btn:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-add-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: var(--primary-dark);
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  .mobile-toggle {
+    display: flex !important;
+  }
+}
+

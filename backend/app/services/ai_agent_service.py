@@ -3,6 +3,7 @@ import json
 import logging
 import httpx
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from ..models import Facility
 from ..schemas import (
@@ -11,6 +12,7 @@ from ..schemas import (
 )
 from .facility_service import FacilityService, haversine_distance
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Valid Restora amenity categories

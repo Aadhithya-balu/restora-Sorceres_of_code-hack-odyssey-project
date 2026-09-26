@@ -13,7 +13,8 @@ export const AdminPage: React.FC = () => {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [reports, setReports] = useState<FacilityReport[]>([]);
-  const [activeTab, setActiveTab] = useState<'moderation' | 'facilities' | 'gaps'>('moderation');
+  const [pendingSubmissions, setPendingSubmissions] = useState<Facility[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'moderation' | 'facilities' | 'gaps'>('pending');
   const [loading, setLoading] = useState(false);
 
   // New facility form state
@@ -42,14 +43,16 @@ export const AdminPage: React.FC = () => {
     if (!isAdmin) return;
     try {
       setLoading(true);
-      const [ov, facs, reps] = await Promise.all([
+      const [ov, facs, reps, pending] = await Promise.all([
         adminApi.getOverview(),
         facilityApi.getFacilities(),
-        reportApi.getReports()
+        reportApi.getReports(),
+        facilityApi.getPendingFacilities()
       ]);
       setOverview(ov);
       setFacilities(facs);
       setReports(reps);
+      setPendingSubmissions(pending);
     } catch (err: any) {
       console.error('Failed to load admin data', err);
     } finally {
@@ -60,6 +63,25 @@ export const AdminPage: React.FC = () => {
   useEffect(() => {
     loadAdminData();
   }, [isAdmin]);
+
+  const handleApproveFacility = async (facId: number) => {
+    try {
+      await facilityApi.approveFacility(facId);
+      loadAdminData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve facility');
+    }
+  };
+
+  const handleRejectFacility = async (facId: number) => {
+    if (!confirm('Are you sure you want to reject this submitted facility?')) return;
+    try {
+      await facilityApi.rejectFacility(facId);
+      loadAdminData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject facility');
+    }
+  };
 
   const handleModerateReport = async (reportId: number, status: string) => {
     const review_notes = prompt(`Add moderator note for this action (${status}):`, 'Verified by Restora administrator');
@@ -186,19 +208,21 @@ export const AdminPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="card">
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Crowd Reports</div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{overview.total_reports}</div>
-            <div style={{ fontSize: 12, color: overview.pending_reports > 0 ? 'var(--warning)' : 'var(--text-muted)', marginTop: 2 }}>
-              ⚠️ {overview.pending_reports} Pending Review
+          <div className="card" style={{ borderTop: pendingSubmissions.length > 0 ? '3px solid var(--warning)' : undefined }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pending Submissions</div>
+            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4, color: pendingSubmissions.length > 0 ? 'var(--warning)' : 'inherit' }}>
+              {pendingSubmissions.length}
+            </div>
+            <div style={{ fontSize: 12, color: pendingSubmissions.length > 0 ? 'var(--warning)' : 'var(--text-muted)', marginTop: 2 }}>
+              ⏳ Awaiting Verification
             </div>
           </div>
 
           <div className="card">
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Breaks Logged</div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{overview.total_break_sessions}</div>
-            <div style={{ fontSize: 12, color: 'var(--primary)', marginTop: 2 }}>
-              ☕ Worker Respite
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Crowd Reports</div>
+            <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{overview.total_reports}</div>
+            <div style={{ fontSize: 12, color: overview.pending_reports > 0 ? 'var(--warning)' : 'var(--text-muted)', marginTop: 2 }}>
+              ⚠️ {overview.pending_reports} Condition Issues
             </div>
           </div>
 
@@ -280,7 +304,8 @@ export const AdminPage: React.FC = () => {
                     className="form-input"
                     value={newFacHours}
                     onChange={(e) => setNewFacHours(e.target.value)}
-                  />
+                  >
+                  </input>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Pricing Terms</label>
@@ -322,7 +347,13 @@ export const AdminPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+        >
+          <Clock size={15} /> Pending Spot Submissions ({pendingSubmissions.length})
+        </button>
         <button
           onClick={() => setActiveTab('moderation')}
           className={`btn ${activeTab === 'moderation' ? 'btn-primary' : 'btn-secondary'}`}
@@ -342,6 +373,106 @@ export const AdminPage: React.FC = () => {
           <Sparkles size={15} /> Service Gap Analytics
         </button>
       </div>
+
+      {/* Pending Spot Submissions Tab (§ 12) */}
+      {activeTab === 'pending' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {pendingSubmissions.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                backgroundColor: '#ECFDF5',
+                color: 'var(--success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px'
+              }}>
+                <CheckCircle size={24} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>
+                All Spot Submissions Moderated
+              </h3>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+                No crowdsourced spots are currently waiting for admin verification.
+              </p>
+            </div>
+          ) : (
+            pendingSubmissions.map((spot) => (
+              <div
+                key={spot.id}
+                className="card"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                  borderLeft: '4px solid var(--warning)'
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 280 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span className="badge badge-reported">
+                      Pending Verification
+                    </span>
+                    <span className="badge badge-neutral" style={{ fontSize: 11 }}>
+                      {spot.category.replace('_', ' ')}
+                    </span>
+                    <strong style={{ fontSize: 16 }}>{spot.name}</strong>
+                  </div>
+
+                  <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    📍 {spot.address} • {spot.zone}, {spot.city}
+                  </p>
+
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted)', margin: '6px 0' }}>
+                    <span>🕒 {spot.operating_hours}</span>
+                    <span>Coordinates: {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}</span>
+                    <span>Submitted: {new Date(spot.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* Amenities */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {spot.has_washroom && <span className="badge badge-neutral" style={{ fontSize: 11 }}>🚻 Washroom</span>}
+                    {spot.has_water && <span className="badge badge-neutral" style={{ fontSize: 11 }}>💧 Drinking Water</span>}
+                    {spot.has_charging && <span className="badge badge-neutral" style={{ fontSize: 11 }}>🔋 Charging</span>}
+                    {spot.has_rest && <span className="badge badge-neutral" style={{ fontSize: 11 }}>🪑 Seating</span>}
+                    {spot.has_shade && <span className="badge badge-neutral" style={{ fontSize: 11 }}>⛱️ Shade</span>}
+                    {spot.has_parking && <span className="badge badge-neutral" style={{ fontSize: 11 }}>🛵 Parking</span>}
+                    {spot.has_food && <span className="badge badge-neutral" style={{ fontSize: 11 }}>🍱 Food</span>}
+                  </div>
+
+                  {spot.notes && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>
+                      Rider Note: "{spot.notes}"
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => handleApproveFacility(spot.id)}
+                    className="btn btn-primary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <CheckCircle size={14} /> Approve Spot
+                  </button>
+                  <button
+                    onClick={() => handleRejectFacility(spot.id)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: 'var(--danger)' }}
+                  >
+                    Reject Spot
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Report Moderation Tab */}
       {activeTab === 'moderation' && (
