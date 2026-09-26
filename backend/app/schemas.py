@@ -57,6 +57,7 @@ class FacilityBase(BaseModel):
     lng: float
     is_open: bool = True
     operating_hours: str = "06:00 - 23:00"
+    is_24_7: Optional[bool] = False
     access_type: str = "PUBLIC"
     pricing_info: str = "Free to use"
     accessibility_info: str = "Ground level, 2W accessible"
@@ -68,6 +69,7 @@ class FacilityBase(BaseModel):
     has_parking: bool = False
     has_food: bool = False
     has_medical: bool = False
+    verification_status: Optional[str] = "PENDING"
     notes: Optional[str] = None
 
 class FacilityCreate(FacilityBase):
@@ -97,11 +99,33 @@ class FacilityUpdate(BaseModel):
     verification_status: Optional[str] = None
     notes: Optional[str] = None
 
+class ReviewCreate(BaseModel):
+    facility_id: int
+    rating: float = Field(..., ge=1, le=5)
+    cleanliness: Optional[float] = Field(5, ge=1, le=5)
+    accessibility: Optional[float] = Field(5, ge=1, le=5)
+    safety: Optional[float] = Field(5, ge=1, le=5)
+    comment: Optional[str] = ""
+
+class ReviewSchema(BaseModel):
+    id: int
+    facility_id: int
+    user_name: str
+    rating: float
+    cleanliness: float
+    accessibility: float
+    safety: float
+    comment: str
+    created_at: datetime.datetime
+
 class FacilitySchema(FacilityBase):
     id: int
     distance_meters: Optional[int] = None
     verification_status: str
     verification_count: int
+    rating: Optional[float] = 4.6
+    review_count: Optional[int] = 0
+    is_24_7: Optional[bool] = False
     last_reported_at: datetime.datetime
     created_at: datetime.datetime
     is_bookmarked: Optional[bool] = False
@@ -300,6 +324,7 @@ class AdminOverviewResponse(BaseModel):
     verified_facilities: int
     total_reports: int
     pending_reports: int
+    pending_submissions: Optional[int] = 0
     total_break_sessions: int
     total_users: int
     service_gaps: List[Dict[str, Any]]

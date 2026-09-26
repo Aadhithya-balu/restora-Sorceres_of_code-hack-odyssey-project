@@ -161,6 +161,22 @@ export const FacilityCard: React.FC<FacilityCardProps> = ({
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
+          {isSelected && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: '#0D9488',
+              color: '#FFFFFF',
+              fontSize: 10,
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: 8,
+              marginBottom: 6
+            }}>
+              <span>✓ Selected (Click to deselect)</span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
             <span style={{ 
               fontSize: 11, 

@@ -30,6 +30,9 @@ export interface Facility {
   distance_meters?: number;
   is_open: boolean;
   operating_hours: string;
+  is_24_7?: boolean;
+  rating?: number;
+  review_count?: number;
   access_type: 'PUBLIC' | 'PRIVATE' | 'PERMISSION_REQUIRED' | 'RESTRICTED' | 'UNKNOWN';
   pricing_info: string;
   accessibility_info: string;
@@ -41,12 +44,24 @@ export interface Facility {
   has_parking: boolean;
   has_food: boolean;
   has_medical: boolean;
-  verification_status: 'VERIFIED' | 'RECENTLY_REPORTED' | 'UNVERIFIED' | 'ACCESS_UNKNOWN';
+  verification_status: 'VERIFIED' | 'RECENTLY_REPORTED' | 'UNVERIFIED' | 'ACCESS_UNKNOWN' | 'PENDING' | 'REJECTED';
   verification_count: number;
   last_reported_at: string;
   notes?: string;
   created_at: string;
   is_bookmarked?: boolean;
+}
+
+export interface FacilityReview {
+  id: number;
+  facility_id: number;
+  user_name: string;
+  rating: number;
+  cleanliness: number;
+  accessibility: number;
+  safety: number;
+  comment: string;
+  created_at: string;
 }
 
 export interface FacilityReport {
@@ -139,6 +154,7 @@ export interface AdminOverview {
   verified_facilities: number;
   total_reports: number;
   pending_reports: number;
+  pending_submissions?: number;
   total_break_sessions: number;
   total_users: number;
   service_gaps: {

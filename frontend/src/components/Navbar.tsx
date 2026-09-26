@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { 
   Compass, MapPin, Coffee, Route, 
   HelpCircle, Shield, User as UserIcon, 
-  LogOut, LogIn, Menu, X, CheckCircle 
+  LogOut, LogIn, Menu, X, CheckCircle,
+  PlusCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onOpenAddSpot?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenAddSpot }) => {
   const { user, isAuthenticated, isAdmin, logout, openAuthModal } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -119,8 +121,38 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           )}
         </nav>
 
-        {/* User Auth Actions */}
+        {/* User Auth Actions & Add Spot */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onOpenAddSpot && (
+            <button
+              type="button"
+              onClick={onOpenAddSpot}
+              className="btn btn-primary btn-sm"
+              style={{
+                borderRadius: 20,
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 2px 6px rgba(13, 148, 136, 0.25)'
+              }}
+              title="Add a new spot to earn +15 reputation points"
+            >
+              <PlusCircle size={15} />
+              <span>Add Spot</span>
+              <span style={{
+                fontSize: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                padding: '1px 5px',
+                borderRadius: 8
+              }}>
+                +15 pts
+              </span>
+            </button>
+          )}
+
           {isAuthenticated && user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button 
@@ -224,6 +256,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               onClick={() => handleNavClick('admin')}
             >
               <Shield size={16} /> Admin Management
+            </button>
+          )}
+
+          {onOpenAddSpot && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ justifyContent: 'center', gap: 6, fontWeight: 700, margin: '6px 0', borderRadius: 10 }}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenAddSpot();
+              }}
+            >
+              <PlusCircle size={16} /> + Add Spot (+15 pts)
             </button>
           )}
 

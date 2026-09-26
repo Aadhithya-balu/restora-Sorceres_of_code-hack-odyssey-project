@@ -15,9 +15,10 @@ import { WeatherGuidance } from '../components/WeatherGuidance';
 
 interface DashboardPageProps {
   onNavigate: (tab: string) => void;
+  onOpenAddSpot?: () => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpenAddSpot }) => {
   const { user, isAuthenticated, openAuthModal } = useAuth();
   
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
@@ -203,6 +204,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {onOpenAddSpot && (
+            <button 
+              type="button"
+              onClick={onOpenAddSpot}
+              className="btn btn-primary"
+              style={{ fontWeight: 700 }}
+              title="Add a new resting point or amenity (+15 points)"
+            >
+              <PlusCircle size={16} /> + Add Spot (+15 pts)
+            </button>
+          )}
           <button 
             onClick={handleQuickBreak}
             className="btn btn-outline"
@@ -212,7 +224,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </button>
           <button 
             onClick={() => onNavigate('route')}
-            className="btn btn-primary"
+            className="btn btn-secondary"
           >
             <Compass size={16} /> Route Corridor Check
           </button>
@@ -328,6 +340,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Emergency Kit</div>
           </button>
         </div>
+
+        {activeNeed !== 'all' && (
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const catMap: Record<string, string> = {
+                  water: 'WATER',
+                  washroom: 'WASHROOM',
+                  charging: 'CHARGING',
+                  shade: 'REST_POINT',
+                  medical: 'REST_POINT'
+                };
+                onNavigate(`explore?category=${catMap[activeNeed] || 'WASHROOM'}`);
+              }}
+              className="btn btn-outline btn-sm"
+              style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span>Explore all {activeNeed} points on Live Map</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Weather & Safety Guidance */}
@@ -389,6 +424,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 <PlusCircle size={14} />
                 <span>{seedingDemo ? 'Creating...' : '📍 Add 5 Demo Rest Hubs Here'}</span>
               </button>
+              {onOpenAddSpot && (
+                <button
+                  type="button"
+                  onClick={onOpenAddSpot}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontWeight: 700 }}
+                >
+                  <PlusCircle size={14} />
+                  <span>+ Add Spot (+15 pts)</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setUseCoimbatoreCorridor(true)}

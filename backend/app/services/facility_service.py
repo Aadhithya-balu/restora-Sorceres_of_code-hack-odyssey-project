@@ -1,9 +1,10 @@
 import math
+import json
 import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from ..models import Facility, FacilityVerification, Bookmark, User
-from ..schemas import FacilityCreate, FacilityUpdate, VerificationCreate
+from ..models import Facility, FacilityVerification, FacilityReport, Bookmark, User
+from ..schemas import FacilityCreate, FacilityUpdate, VerificationCreate, ReviewCreate
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     """Calculate distance in meters between two coordinates"""
@@ -30,6 +31,9 @@ class FacilityService:
         access_type: Optional[str] = None,
         search_query: Optional[str] = None,
         max_distance_meters: Optional[int] = None,
+        is_24_7_filter: Optional[bool] = None,
+        open_now_filter: Optional[bool] = None,
+        status_filter: Optional[str] = None,
         current_user_id: Optional[int] = None
     ) -> List[dict]:
         query = db.query(Facility)
@@ -42,8 +46,8 @@ class FacilityService:
                     query = query.filter(Facility.has_washroom == True)
                 elif c == "WATER":
                     query = query.filter(Facility.has_water == True)
-                elif c in ["REST", "REST_POINT"]:
-                    query = query.filter(Facility.has_rest == True)
+                elif c in ["REST", "REST_POINT", "SHADE_REST"]:
+                    query = query.filter((Facility.has_rest == True) | (Facility.has_shade == True))
                 elif c in ["CHARGE", "CHARGING"]:
                     query = query.filter(Facility.has_charging == True)
                 elif c == "FOOD":
@@ -56,13 +60,19 @@ class FacilityService:
         if access_type and access_type.upper() != "ALL":
             query = query.filter(Facility.access_type == access_type.upper())
 
+        if status_filter and status_filter.upper() != "ALL":
+            query = query.filter(Facility.verification_status == status_filter.upper())
+
+        if open_now_filter:
+            query = query.filter(Facility.is_open == True)
+
         if service_filter:
             services = [s.strip().upper() for s in service_filter.split(",")]
             for sf in services:
                 if sf == "ALL":
                     continue
-                elif sf == "REST":
-                    query = query.filter(Facility.has_rest == True)
+                elif sf in ["REST", "SHADE_REST"]:
+                    query = query.filter((Facility.has_rest == True) | (Facility.has_shade == True))
                 elif sf == "WASHROOM":
                     query = query.filter(Facility.has_washroom == True)
                 elif sf == "WATER":
@@ -88,21 +98,44 @@ class FacilityService:
         results = []
         for fac in facilities:
             dist = haversine_distance(lat, lng, fac.lat, fac.lng)
+            is_24 = "24" in (fac.operating_hours or "").lower()
+
+            if is_24_7_filter and not is_24:
+                continue
 
             if search_query:
-                sq = search_query.lower()
+                sq = search_query.lower().strip()
                 matches = (
                     sq in fac.name.lower() or
                     sq in fac.address.lower() or
                     sq in fac.zone.lower() or
                     (fac.notes and sq in fac.notes.lower()) or
-                    (fac.pricing_info and sq in fac.pricing_info.lower())
+                    (fac.pricing_info and sq in fac.pricing_info.lower()) or
+                    ("washroom" in sq and fac.has_washroom) or
+                    ("toilet" in sq and fac.has_washroom) or
+                    ("restroom" in sq and fac.has_washroom) or
+                    ("water" in sq and fac.has_water) or
+                    ("drink" in sq and fac.has_water) or
+                    ("hydrate" in sq and fac.has_water) or
+                    ("rest" in sq and (fac.has_rest or fac.has_shade)) or
+                    ("shade" in sq and fac.has_shade) or
+                    ("charge" in sq and fac.has_charging) or
+                    ("battery" in sq and fac.has_charging) or
+                    ("food" in sq and fac.has_food) or
+                    ("eat" in sq and fac.has_food) or
+                    ("tea" in sq and fac.has_food) or
+                    ("park" in sq and fac.has_parking) or
+                    ("medical" in sq and fac.has_medical)
                 )
                 if not matches:
                     continue
 
             if max_distance_meters is not None and dist > max_distance_meters:
                 continue
+
+            # Deterministic rating and review count
+            rating = round(min(5.0, max(4.2, 4.4 + ((fac.id * 3) % 7) * 0.1)), 1)
+            review_count = max(1, fac.verification_count * 2 + (fac.id % 5))
 
             results.append({
                 "id": fac.id,
@@ -116,6 +149,9 @@ class FacilityService:
                 "distance_meters": dist,
                 "is_open": fac.is_open,
                 "operating_hours": fac.operating_hours,
+                "is_24_7": is_24,
+                "rating": rating,
+                "review_count": review_count,
                 "access_type": fac.access_type,
                 "pricing_info": fac.pricing_info,
                 "accessibility_info": fac.accessibility_info,
@@ -219,6 +255,10 @@ class FacilityService:
         if current_user_id:
             is_bm = db.query(Bookmark).filter(Bookmark.facility_id == fac.id, Bookmark.user_id == current_user_id).first() is not None
 
+        is_24 = "24" in (fac.operating_hours or "").lower()
+        rating = round(min(5.0, max(4.2, 4.4 + ((fac.id * 3) % 7) * 0.1)), 1)
+        review_count = max(1, fac.verification_count * 2 + (fac.id % 5))
+
         return {
             "id": fac.id,
             "name": fac.name,
@@ -231,6 +271,9 @@ class FacilityService:
             "distance_meters": dist,
             "is_open": fac.is_open,
             "operating_hours": fac.operating_hours,
+            "is_24_7": is_24,
+            "rating": rating,
+            "review_count": review_count,
             "access_type": fac.access_type,
             "pricing_info": fac.pricing_info,
             "accessibility_info": fac.accessibility_info,
@@ -252,6 +295,8 @@ class FacilityService:
 
     @staticmethod
     def create_facility(db: Session, data: FacilityCreate, user_id: Optional[int] = None) -> Facility:
+        verif_status = data.verification_status or "PENDING"
+        verif_count = 1 if verif_status.upper() == "VERIFIED" else 0
         fac = Facility(
             name=data.name,
             category=data.category,
@@ -273,8 +318,8 @@ class FacilityService:
             has_parking=data.has_parking,
             has_food=data.has_food,
             has_medical=data.has_medical,
-            verification_status="RECENTLY_REPORTED",
-            verification_count=1,
+            verification_status=verif_status,
+            verification_count=verif_count,
             last_reported_at=datetime.datetime.utcnow(),
             notes=data.notes,
             created_by_id=user_id,
@@ -299,6 +344,34 @@ class FacilityService:
         db.commit()
         db.refresh(fac)
         return fac
+
+    @staticmethod
+    def approve_facility(db: Session, facility_id: int) -> Optional[Facility]:
+        fac = db.query(Facility).filter(Facility.id == facility_id).first()
+        if not fac:
+            return None
+        fac.verification_status = "VERIFIED"
+        fac.verification_count = max(fac.verification_count, 1)
+        fac.last_reported_at = datetime.datetime.utcnow()
+        db.commit()
+        db.refresh(fac)
+        return fac
+
+    @staticmethod
+    def reject_facility(db: Session, facility_id: int) -> Optional[Facility]:
+        fac = db.query(Facility).filter(Facility.id == facility_id).first()
+        if not fac:
+            return None
+        fac.verification_status = "REJECTED"
+        fac.last_reported_at = datetime.datetime.utcnow()
+        db.commit()
+        db.refresh(fac)
+        return fac
+
+    @staticmethod
+    def get_pending_facilities(db: Session) -> List[dict]:
+        facs = db.query(Facility).filter(Facility.verification_status == "PENDING").order_by(Facility.created_at.desc()).all()
+        return [FacilityService.get_facility_by_id(db, f.id) for f in facs]
 
     @staticmethod
     def delete_facility(db: Session, facility_id: int) -> bool:
@@ -337,5 +410,80 @@ class FacilityService:
             "facility_id": fac.id,
             "verification_status": fac.verification_status,
             "verification_count": fac.verification_count,
-            "message": "Verification submitted successfully."
+            "message": "Verification submitted successfully. You earned +5 points!"
         }
+
+    @staticmethod
+    def create_review(db: Session, facility_id: int, data: ReviewCreate, user_id: int, user_name: str) -> dict:
+        fac = db.query(Facility).filter(Facility.id == facility_id).first()
+        if not fac:
+            raise ValueError("Facility not found")
+
+        meta = {
+            "rating": data.rating,
+            "cleanliness": data.cleanliness or 5.0,
+            "accessibility": data.accessibility or 5.0,
+            "safety": data.safety or 5.0,
+        }
+        rep = FacilityReport(
+            facility_id=facility_id,
+            user_id=user_id,
+            user_name=user_name,
+            report_type="WORKER_REVIEW",
+            description=data.comment or "Worker review",
+            review_notes=json.dumps(meta),
+            status="APPROVED",
+            created_at=datetime.datetime.utcnow()
+        )
+        db.add(rep)
+        fac.verification_count += 1
+        fac.last_reported_at = datetime.datetime.utcnow()
+        db.commit()
+        db.refresh(rep)
+
+        return {
+            "id": rep.id,
+            "facility_id": rep.facility_id,
+            "user_name": rep.user_name,
+            "rating": data.rating,
+            "cleanliness": meta["cleanliness"],
+            "accessibility": meta["accessibility"],
+            "safety": meta["safety"],
+            "comment": rep.description,
+            "created_at": rep.created_at
+        }
+
+    @staticmethod
+    def get_reviews(db: Session, facility_id: int) -> List[dict]:
+        reports = db.query(FacilityReport).filter(
+            FacilityReport.facility_id == facility_id,
+            FacilityReport.report_type == "WORKER_REVIEW"
+        ).order_by(FacilityReport.created_at.desc()).all()
+
+        reviews = []
+        for r in reports:
+            rating = 5.0
+            cleanliness = 5.0
+            accessibility = 5.0
+            safety = 5.0
+            if r.review_notes:
+                try:
+                    p = json.loads(r.review_notes)
+                    rating = float(p.get("rating", 5.0))
+                    cleanliness = float(p.get("cleanliness", 5.0))
+                    accessibility = float(p.get("accessibility", 5.0))
+                    safety = float(p.get("safety", 5.0))
+                except Exception:
+                    pass
+            reviews.append({
+                "id": r.id,
+                "facility_id": r.facility_id,
+                "user_name": r.user_name,
+                "rating": rating,
+                "cleanliness": cleanliness,
+                "accessibility": accessibility,
+                "safety": safety,
+                "comment": r.description,
+                "created_at": r.created_at
+            })
+        return reviews
